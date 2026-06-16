@@ -23,7 +23,6 @@
     background-attachment: fixed; min-height: 100vh;
   }
   .wrap { max-width: 1120px; margin: 0 auto; padding: 26px 22px 70px; }
-  a { color: inherit; }
 
   header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .brand { display: flex; align-items: center; gap: 12px; }
@@ -40,17 +39,26 @@
   .pill.snap { color: var(--warn); border-color: rgba(245,165,36,.35); }
   @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
 
-  /* hero */
-  .hero { margin: 30px 0 8px; }
+  /* tabs */
+  .tabs { display: flex; gap: 6px; margin: 22px 0 4px; border-bottom: 1px solid var(--line); }
+  .tab { background: none; border: 0; color: var(--muted); font: inherit; font-weight: 600; font-size: 14px;
+    padding: 10px 16px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: .15s; }
+  .tab:hover { color: var(--ink); }
+  .tab.active { color: var(--ink); border-bottom-color: var(--blue); }
+  .panel { display: none; }
+  .panel.active { display: block; animation: rise .5s; }
+
+  .hero { margin: 26px 0 8px; }
   .hero .eyebrow { color: var(--blue2); font-size: 13px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; }
   .hero .big {
-    font-size: clamp(52px, 11vw, 104px); font-weight: 800; line-height: .98; margin: 8px 0 6px;
+    font-size: clamp(48px, 10vw, 96px); font-weight: 800; line-height: .98; margin: 8px 0 6px;
     letter-spacing: -3px; font-variant-numeric: tabular-nums;
     background: linear-gradient(120deg, #fff 10%, var(--blue2) 55%, var(--emer) 100%);
     -webkit-background-clip: text; background-clip: text; color: transparent;
     text-shadow: 0 12px 60px rgba(79,134,247,.25);
   }
-  .hero .cap { color: var(--muted); font-size: 16px; max-width: 640px; }
+  .hero.green .big { background: linear-gradient(120deg, #fff 10%, var(--emer) 60%, #9af3cf 100%); -webkit-background-clip: text; background-clip: text; }
+  .hero .cap { color: var(--muted); font-size: 16px; max-width: 660px; }
   .hero .cap b { color: var(--ink); }
 
   .chips { display: flex; gap: 10px; flex-wrap: wrap; margin: 20px 0 4px; }
@@ -60,23 +68,20 @@
   .chip .v .u { font-size: 13px; color: var(--blue2); font-weight: 600; }
 
   .grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 16px; margin-top: 22px; }
-  section.card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px 22px; box-shadow: var(--glow); backdrop-filter: blur(10px); }
+  section.card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px 22px; box-shadow: var(--glow); backdrop-filter: blur(10px); margin: 16px 0; }
   .card h2 { font-size: 14px; margin: 0 0 2px; }
   .card .h2sub { color: var(--dim); font-size: 12px; margin-bottom: 14px; }
 
-  /* mini KPIs in right column */
   .mini { display: grid; gap: 12px; align-content: start; }
   .mini .row { display: flex; align-items: baseline; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--line); border-radius: 13px; background: rgba(10,17,32,.5); }
   .mini .row .l { color: var(--muted); font-size: 12.5px; }
   .mini .row .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .mini .row .v small { color: var(--dim); font-size: 12px; font-weight: 500; }
 
-  /* charts */
   svg { width: 100%; display: block; overflow: visible; }
   .axislbl { fill: var(--dim); font-size: 10px; font-variant-numeric: tabular-nums; }
   .gridline { stroke: var(--line); stroke-width: 1; }
 
-  /* monthly bars */
   .mbars { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; align-items: end; height: 150px; margin-top: 6px; }
   .mbar { position: relative; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
   .mbar .fill { width: 100%; border-radius: 6px 6px 3px 3px; background: linear-gradient(180deg, var(--blue2), var(--blue)); transition: height 1s cubic-bezier(.2,.8,.2,1); }
@@ -86,9 +91,9 @@
   .mbar .val { position: absolute; top: -16px; width: 100%; text-align: center; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; opacity: 0; transition: opacity .3s; }
   .mbar:hover .val { opacity: 1; }
 
-  /* leaderboard */
   .lead { display: grid; gap: 9px; margin-top: 4px; }
   .lrow { display: grid; grid-template-columns: 22px 1fr 96px; align-items: center; gap: 12px; }
+  .lgrid { grid-template-columns: 22px 150px 1fr 96px; }
   .lrow .rank { color: var(--dim); font-size: 13px; font-weight: 700; text-align: center; }
   .lrow .who { font-size: 13px; }
   .lrow .who small { display: block; color: var(--dim); font-size: 11px; }
@@ -98,11 +103,8 @@
   .lrow .amt { text-align: right; font-variant-numeric: tabular-nums; }
   .lrow .amt .d { display: block; color: var(--dim); font-size: 11px; }
   .tag { font-size: 9.5px; padding: 1px 6px; border-radius: 5px; border: 1px solid rgba(245,165,36,.4); color: var(--gold); margin-left: 6px; vertical-align: middle; }
-  .barwrap { display: grid; grid-template-columns: 1fr; }
-  .lrow .who, .lrow .amt { align-self: center; }
-  .lgrid { display: grid; grid-template-columns: 22px 150px 1fr 96px; align-items: center; gap: 12px; }
-
   .callout { margin-top: 16px; border: 1px solid rgba(245,165,36,.28); background: rgba(245,165,36,.06); border-radius: 12px; padding: 11px 15px; color: #f7dca0; font-size: 12.5px; }
+  .info { margin-top: 16px; border: 1px solid var(--line); background: rgba(79,134,247,.06); border-radius: 12px; padding: 11px 15px; color: var(--muted); font-size: 12.5px; }
   footer { color: var(--dim); font-size: 12px; margin-top: 26px; line-height: 1.7; }
   footer code { color: var(--muted); }
 
@@ -111,8 +113,8 @@
     .lgrid { grid-template-columns: 20px 110px 1fr 78px; }
     .mbars { gap: 5px; }
   }
-  .reveal { opacity: 0; transform: translateY(10px); animation: rise .7s forwards; }
-  @keyframes rise { to { opacity: 1; transform: none; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .reveal { animation: rise .7s both; }
 </style>
 </head>
 <body>
@@ -131,47 +133,63 @@
     </div>
   </header>
 
-  <div class="hero reveal" style="animation-delay:.05s">
-    <div class="eyebrow">Commission influenced by AI</div>
-    <div id="hero" class="big">$0</div>
-    <div class="cap" id="herocap"></div>
-    <div class="chips" id="chips"></div>
+  <div class="tabs reveal">
+    <button class="tab active" data-tab="commission">💰 Commission</button>
+    <button class="tab" data-tab="replies">💬 Replies</button>
   </div>
 
-  <div class="grid">
-    <section class="card reveal" style="animation-delay:.12s">
-      <h2>Cumulative commission influenced</h2>
-      <div class="h2sub">The compounding curve — every dollar AI has touched, month over month.</div>
-      <div id="areaChart"></div>
+  <!-- ===================== COMMISSION ===================== -->
+  <div class="panel active" id="panel-commission">
+    <div class="hero">
+      <div class="eyebrow">Commission influenced by AI</div>
+      <div id="hero" class="big">$0</div>
+      <div class="cap" id="herocap"></div>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Cumulative commission influenced</h2>
+        <div class="h2sub">The compounding curve — every dollar AI has touched, month over month.</div>
+        <div id="areaChart"></div>
+      </section>
+      <section class="card mini" id="mini"></section>
+    </div>
+
+    <section class="card">
+      <h2>Commission by payout month</h2>
+      <div class="h2sub" id="monthsub">Hover a bar for the exact figure.</div>
+      <div class="mbars" id="mbars"></div>
     </section>
 
-    <section class="card reveal mini" style="animation-delay:.16s" id="mini"></section>
+    <section class="card">
+      <h2>Bot leaderboard</h2>
+      <div class="h2sub">Per-bot influence (last milestone-writer on each funded deal).</div>
+      <div class="lead" id="lead"></div>
+      <div class="callout" id="callout"></div>
+    </section>
   </div>
 
-  <section class="card reveal" style="animation-delay:.2s">
-    <h2>Commission by payout month</h2>
-    <div class="h2sub" id="monthsub">Hover a bar for the exact figure.</div>
-    <div class="mbars" id="mbars"></div>
-  </section>
+  <!-- ======================= REPLIES ======================= -->
+  <div class="panel" id="panel-replies">
+    <div class="hero green">
+      <div class="eyebrow">Inbound reply quality</div>
+      <div id="rhero" class="big">—</div>
+      <div class="cap" id="rherocap">Classifying inbound replies to the bots with Claude.</div>
+      <div class="chips" id="replyChips"></div>
+    </div>
 
-  <section class="card reveal" style="animation-delay:.24s">
-    <h2>Bot leaderboard</h2>
-    <div class="h2sub">Per-bot influence (last milestone-writer on each funded deal).</div>
-    <div class="lead" id="lead"></div>
-    <div class="callout" id="callout"></div>
-  </section>
+    <section class="card">
+      <h2>Sentiment breakdown</h2>
+      <div class="h2sub">Every inbound reply, classified Positive / Neutral / Negative / Opt-out.</div>
+      <div class="lead" id="replyBars"></div>
+      <div class="info" id="replyInfo"></div>
+    </section>
+  </div>
 
-  <section class="card reveal" id="replyCard" style="animation-delay:.28s; display:none">
-    <h2>Conversation sentiment</h2>
-    <div class="h2sub" id="replySub">Inbound replies to the bots, classified by Claude.</div>
-    <div class="chips" id="replyChips" style="margin-top:2px"></div>
-    <div class="lead" id="replyBars" style="margin-top:14px"></div>
-  </section>
-
-  <footer class="reveal" style="animation-delay:.32s">
-    <strong>Method:</strong> <code>SUM(csbs__Commission_Amount__c)</code> on <code>StageName='Funded'</code> opportunities tagged with an in-house AI value in <code>Assisted_by__c</code>.
-    Figures are <em>commission influenced</em>, not full attribution. <span id="footmtd"></span><br>
-    Source: Salesforce → Supabase <code>ai_impact</code> mart, refreshed nightly by the api.btc ETL.
+  <footer class="reveal">
+    <strong>Commission:</strong> <code>SUM(csbs__Commission_Amount__c)</code> on <code>StageName='Funded'</code> opps tagged with an in-house AI value in <code>Assisted_by__c</code> — <em>commission influenced</em>, not full attribution. <span id="footmtd"></span><br>
+    <strong>Replies:</strong> GoHighLevel inbound conversations classified by Claude. Both refreshed nightly by api.btc ETLs into the Supabase <code>ai_impact</code> mart.
   </footer>
 </div>
 
@@ -203,6 +221,7 @@ const SNAPSHOT = {
     { payout_month: "2026-05", commission_amt: 113840.12, distinct_opps: 61 },
     { payout_month: "2026-06", commission_amt: 102629.98, distinct_opps: 34 }
   ],
+  replies: [],
   asOf: "2026-06-16"
 };
 
@@ -213,6 +232,13 @@ const monLbl = (ym) => { const [y, m] = ym.split("-"); return ["Jan","Feb","Mar"
 const monShort = (ym) => ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+ym.split("-")[1] - 1];
 const el = (h) => { const t = document.createElement("template"); t.innerHTML = h.trim(); return t.content.firstChild; };
 const nowYM = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
+
+// tab switching
+document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === b));
+  const t = b.dataset.tab;
+  document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "panel-" + t));
+}));
 
 async function pgrest(view, q) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${view}?${q}`, { headers: { apikey: SUPABASE_ANON, Authorization: "Bearer " + SUPABASE_ANON } });
@@ -239,8 +265,7 @@ function countUp(node, target, fmt, ms = 1500) {
     const p = Math.min(1, (t - t0) / ms);
     const e = 1 - Math.pow(1 - p, 3);
     node.textContent = fmt(target * e);
-    if (p < 1) requestAnimationFrame(step);
-    else node.textContent = fmt(target);
+    if (p < 1) requestAnimationFrame(step); else node.textContent = fmt(target);
   })(t0);
 }
 
@@ -251,8 +276,6 @@ function areaChart(months) {
   const n = pts.length;
   const X = (i) => PL + (i / (n - 1)) * (W - PL - PR);
   const Y = (v) => PT + (1 - v / maxY) * (H - PT - PB);
-  const curYM = nowYM();
-  const mtdIdx = pts.findIndex((p) => p.ym === curYM);
 
   let grid = "", ticks = 4;
   for (let i = 0; i <= ticks; i++) {
@@ -268,35 +291,27 @@ function areaChart(months) {
   const dots = pts.map((p, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(p.cum).toFixed(1)}" r="${i === n - 1 ? 5 : 2.6}" fill="${i === n - 1 ? "#fff" : "#7aa7ff"}" stroke="#4f86f7" stroke-width="${i === n - 1 ? 3 : 0}"/>`).join("");
   const endLbl = `<text x="${X(n - 1)}" y="${Y(pts[n - 1].cum) - 14}" text-anchor="end" fill="#fff" font-size="13" font-weight="700">${fmtMoney0(pts[n - 1].cum)}</text>`;
 
-  const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative commission">
+  document.getElementById("areaChart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative commission">
     <defs>
-      <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="rgba(79,134,247,.55)"/>
-        <stop offset="100%" stop-color="rgba(52,211,153,.02)"/>
-      </linearGradient>
-      <linearGradient id="lg" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stop-color="#4f86f7"/><stop offset="100%" stop-color="#34d399"/>
-      </linearGradient>
+      <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(79,134,247,.55)"/><stop offset="100%" stop-color="rgba(52,211,153,.02)"/></linearGradient>
+      <linearGradient id="lg" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4f86f7"/><stop offset="100%" stop-color="#34d399"/></linearGradient>
     </defs>
     ${grid}${xlbls}
     <path d="${area}" fill="url(#ag)"/>
     <path d="${line}" fill="none" stroke="url(#lg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
     ${dots}${endLbl}
   </svg>`;
-  document.getElementById("areaChart").innerHTML = svg;
-  return { mtdIdx, peak: months.reduce((a, b) => b.commission_amt > a.commission_amt ? b : a) };
 }
 
 function render(d) {
   const k = d.kpis, months = d.byMonth, bots = d.byBot;
   const curYM = nowYM();
 
-  // hero
   countUp(document.getElementById("hero"), k.total_commission_influenced, fmtMoney0);
-  const yr = months.filter((m) => m.payout_month >= "2026-01").reduce((s, m) => s + m.commission_amt, 0);
   document.getElementById("herocap").innerHTML =
     `Across <b>${k.funded_deals} funded deals</b> in <b>${k.months_tracked} months</b> — that's <b>${fmtMoney0(k.total_commission_influenced / k.months_tracked)}/mo</b> of revenue our in-house bots had a hand in closing.`;
 
+  const yr = months.filter((m) => m.payout_month >= "2026-01").reduce((s, m) => s + m.commission_amt, 0);
   const peak = months.reduce((a, b) => b.commission_amt > a.commission_amt ? b : a);
   const chips = [
     { v: fmtMoney0(yr), u: "", l: "2026 year-to-date" },
@@ -307,7 +322,6 @@ function render(d) {
   document.getElementById("chips").replaceChildren(...chips.map((c) =>
     el(`<div class="chip"><div class="v">${c.v}<span class="u">${c.u}</span></div><div class="l">${c.l}</div></div>`)));
 
-  // mini KPIs
   const lastFull = months.filter((m) => m.payout_month !== curYM).slice(-1)[0] || months.slice(-1)[0];
   document.getElementById("mini").replaceChildren(
     el(`<div><h2>At a glance</h2><div class="h2sub">Headline metrics</div></div>`),
@@ -318,78 +332,82 @@ function render(d) {
     el(`<div class="row"><span class="l">Active bots</span><span class="v">${bots.length}</span></div>`)
   );
 
-  // cumulative chart
   areaChart(months);
 
-  // monthly bars
   const maxM = Math.max(...months.map((m) => m.commission_amt));
   document.getElementById("mbars").replaceChildren(...months.map((m) => {
     const isPeak = m.payout_month === peak.payout_month;
     const isMtd = m.payout_month === curYM;
     const node = el(`<div class="mbar ${isPeak ? "peak" : ""} ${isMtd ? "mtd" : ""}">
-      <div class="val">${fmtK(m.commission_amt)}</div>
-      <div class="fill" style="height:0"></div>
+      <div class="val">${fmtK(m.commission_amt)}</div><div class="fill" style="height:0"></div>
       <div class="cap">${monShort(m.payout_month)}${isMtd ? "*" : ""}</div></div>`);
     requestAnimationFrame(() => { node.querySelector(".fill").style.height = Math.max(3, (m.commission_amt / maxM) * 100) + "%"; });
     return node;
   }));
-  document.getElementById("monthsub").innerHTML =
-    months.some((m) => m.payout_month === curYM) ? "Hover for exact figures. <b>*</b> current month is month-to-date." : "Hover a bar for the exact figure.";
-  document.getElementById("footmtd").innerHTML =
-    months.some((m) => m.payout_month === curYM) ? "The current month is month-to-date and still climbing." : "";
+  const hasMtd = months.some((m) => m.payout_month === curYM);
+  document.getElementById("monthsub").innerHTML = hasMtd ? "Hover for exact figures. <b>*</b> current month is month-to-date." : "Hover a bar for the exact figure.";
+  document.getElementById("footmtd").innerHTML = hasMtd ? "The current month is month-to-date and still climbing." : "";
 
-  // leaderboard
   const maxB = Math.max(...bots.map((b) => b.commission_amt));
-  document.getElementById("lead").className = "lead";
   document.getElementById("lead").replaceChildren(...bots.map((b, i) => {
     const warn = b.assisted_by_value === CONTAM;
     const node = el(`<div class="lrow lgrid ${warn ? "warn" : ""}">
       <div class="rank">${i + 1}</div>
       <div class="who">${b.bot_name || b.assisted_by_value}${warn ? '<span class="tag">⚠ contaminated</span>' : ""}<small>${b.assisted_by_value}</small></div>
       <div class="track"><div class="bar" style="width:0"></div></div>
-      <div class="amt">${fmtMoney0(b.commission_amt)}<span class="d">${b.distinct_opps} deals</span></div>
-    </div>`);
+      <div class="amt">${fmtMoney0(b.commission_amt)}<span class="d">${b.distinct_opps} deals</span></div></div>`);
     requestAnimationFrame(() => { node.querySelector(".bar").style.width = Math.max(2, (b.commission_amt / maxB) * 100) + "%"; });
     return node;
   }));
-
   const topClean = bots.find((b) => b.assisted_by_value !== CONTAM);
   document.getElementById("callout").innerHTML =
     `⚠ <b>Marketing&nbsp;-&nbsp;EW</b> is inflated by an Olivia hot-lead clone leftover, so it overstates Emma Wilson. Cleanest top performer: <b>${topClean.bot_name}</b> at ${fmtMoney0(topClean.commission_amt)} across ${topClean.distinct_opps} deals.`;
 
   renderReplies(d.replies);
-
   if (d.asOf) document.getElementById("asof").textContent = "as of " + d.asOf;
 }
 
 function renderReplies(replies) {
-  const card = document.getElementById("replyCard");
-  if (!replies || !replies.length) return; // stays hidden until the GHL ETL runs
   const ORDER = ["Positive", "Neutral", "Negative", "Opt-out"];
   const COLOR = { Positive: "var(--emer)", Neutral: "var(--blue2)", Negative: "var(--warn)", "Opt-out": "var(--dim)" };
+  const info = document.getElementById("replyInfo");
+
+  if (!replies || !replies.length) {
+    document.getElementById("rhero").textContent = "—";
+    document.getElementById("rherocap").textContent = "No classified replies yet — the nightly GHL → Claude ETL hasn't populated this tab.";
+    document.getElementById("replyChips").replaceChildren();
+    document.getElementById("replyBars").replaceChildren();
+    info.innerHTML = "Run the <code>GHL Replies Sentiment</code> workflow on api.btc to populate this.";
+    return;
+  }
+
   const by = {}; let total = 0;
   replies.forEach((r) => { by[r.sentiment] = (by[r.sentiment] || 0) + r.reply_count; total += r.reply_count; });
   const posPct = total ? Math.round(((by.Positive || 0) / total) * 100) : 0;
 
+  countUp(document.getElementById("rhero"), posPct, (v) => Math.round(v) + "%");
+  document.getElementById("rherocap").innerHTML =
+    `<b>${posPct}% of inbound replies are positive</b> — interested, ready to move forward — across <b>${total.toLocaleString()}</b> classified replies.`;
+
   document.getElementById("replyChips").replaceChildren(
     el(`<div class="chip"><div class="v">${total.toLocaleString()}</div><div class="l">Replies classified</div></div>`),
-    el(`<div class="chip"><div class="v">${posPct}<span class="u">%</span></div><div class="l">Positive</div></div>`),
+    el(`<div class="chip"><div class="v">${(by.Positive || 0).toLocaleString()}</div><div class="l">Positive</div></div>`),
     el(`<div class="chip"><div class="v">${(by.Negative || 0).toLocaleString()}</div><div class="l">Negative</div></div>`),
     el(`<div class="chip"><div class="v">${(by["Opt-out"] || 0).toLocaleString()}</div><div class="l">Opt-outs</div></div>`)
   );
 
   const max = Math.max(...ORDER.map((s) => by[s] || 0), 1);
   document.getElementById("replyBars").replaceChildren(...ORDER.filter((s) => by[s]).map((s) => {
+    const pct = total ? Math.round(((by[s] || 0) / total) * 100) : 0;
     const node = el(`<div class="lrow lgrid">
       <div class="rank">·</div>
-      <div class="who">${s}</div>
+      <div class="who">${s}<small>${pct}% of replies</small></div>
       <div class="track"><div class="bar" style="width:0; background:${COLOR[s]}"></div></div>
-      <div class="amt">${(by[s] || 0).toLocaleString()}<span class="d">replies</span></div>
-    </div>`);
+      <div class="amt">${(by[s] || 0).toLocaleString()}<span class="d">replies</span></div></div>`);
     requestAnimationFrame(() => { node.querySelector(".bar").style.width = Math.max(2, ((by[s] || 0) / max) * 100) + "%"; });
     return node;
   }));
-  card.style.display = "";
+  info.innerHTML = "PoC scope: <b>Megan Anderson</b> sub-account, most-recent conversations. Rolling out to all bot sub-accounts next, plus linking positive replies to funded deals.";
 }
 
 function setMode(kind) {
