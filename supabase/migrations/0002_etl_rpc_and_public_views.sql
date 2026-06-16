@@ -28,15 +28,16 @@ as $$
 declare
   v_as_of date := current_date;
 begin
-  -- Monthly facts: full replace.
-  delete from ai_impact.fct_commission_by_month;
+  -- Monthly facts: full replace. `where true` satisfies sql_safe_updates,
+  -- which PostgREST enables on its connections.
+  delete from ai_impact.fct_commission_by_month where true;
   insert into ai_impact.fct_commission_by_month (payout_month, commission_amt, distinct_opps)
   select x.payout_month, x.commission_amt, x.distinct_opps
   from jsonb_to_recordset(coalesce(p_by_month, '[]'::jsonb))
        as x(payout_month text, commission_amt numeric, distinct_opps int);
 
   -- Per-bot facts: full replace with exact per-value rows (retires "Other in-house").
-  delete from ai_impact.fct_commission_by_bot;
+  delete from ai_impact.fct_commission_by_bot where true;
   insert into ai_impact.fct_commission_by_bot (assisted_by_value, commission_amt, distinct_opps, note)
   select x.assisted_by_value, x.commission_amt, x.distinct_opps, x.note
   from jsonb_to_recordset(coalesce(p_by_bot, '[]'::jsonb))
