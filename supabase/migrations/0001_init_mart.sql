@@ -1,7 +1,8 @@
 -- 0001_init_mart.sql
 -- AI Bot Impact Tracker — mart schema + bot dimension.
--- Mirrors the live `ai_impact_mart_init` migration already applied to project
--- pvvrsvfucwncqseetbhe. Idempotent so it is safe to (re)run against a fresh DB.
+-- Applied to the dedicated Supabase project `ai-impact-tracker`
+-- (rrdgghwxuincfengkjyd) as migration `init_mart`.
+-- Idempotent so it is safe to (re)run against a fresh DB.
 
 create schema if not exists ai_impact;
 

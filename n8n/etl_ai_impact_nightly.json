@@ -49,7 +49,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://pvvrsvfucwncqseetbhe.supabase.co/rest/v1/rpc/refresh_ai_impact_mart",
+        "url": "https://rrdgghwxuincfengkjyd.supabase.co/rest/v1/rpc/refresh_ai_impact_mart",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpCustomAuth",
         "sendBody": true,

@@ -47,7 +47,7 @@ public.refresh_ai_impact_mart()  ── upserts ──▶  ai_impact.{fct_*, kpi
 
 ## Status
 
-- ✅ **Mart** — live in Supabase project `pvvrsvfucwncqseetbhe`, schema
+- ✅ **Mart** — live in Supabase project `rrdgghwxuincfengkjyd`, schema
   `ai_impact` (`dim_bot`, `fct_commission_by_month`, `fct_commission_by_bot`,
   `kpi_summary`). See `supabase/migrations/`.
 - ✅ **ETL** — `public.refresh_ai_impact_mart()` RPC deployed and validated.

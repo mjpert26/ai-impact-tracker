@@ -1,7 +1,7 @@
 -- 0002_etl_rpc_and_public_views.sql
 -- Nightly-ETL upsert RPC + read-only public exposure for the dashboard.
--- Applied to project pvvrsvfucwncqseetbhe as migration
--- `ai_impact_etl_rpc_and_public_views`.
+-- Applied to the dedicated Supabase project `ai-impact-tracker`
+-- (rrdgghwxuincfengkjyd) as migration `etl_rpc_and_public_views`.
 
 -- ---------------------------------------------------------------------------
 -- 1. Uniqueness needed for the KPI upsert.

@@ -12,7 +12,7 @@ Salesforce as a web tab.
 - **Headline (production, validated 2026-06-16):** $952,764.20 commission influenced,
   325 funded deals, ~$2,932/deal, 10 months (2025-09 → 2026-06). Basis:
   `Opportunity.csbs__Commission_Amount__c` on funded deals tagged with an in-house AI value.
-- **Mart is LIVE** in Supabase project `pvvrsvfucwncqseetbhe`, schema `ai_impact`:
+- **Mart is LIVE** in Supabase project `rrdgghwxuincfengkjyd`, schema `ai_impact`:
   `dim_bot`, `fct_commission_by_month`, `fct_commission_by_bot`, `kpi_summary`.
   Migrations in `supabase/migrations/`.
 - **ETL is BUILT.** `public.refresh_ai_impact_mart(p_kpis, p_by_month, p_by_bot)`
@@ -60,7 +60,7 @@ value. The ETL Code node reproduces all three from a single raw pull.
 
 ## Environment / MCPs
 - **Salesforce** (read-only via MCP), **n8n api.btc** (read-only MCP — workflow must be
-  imported manually), **n8n-2** (read-only), **Supabase** (project `pvvrsvfucwncqseetbhe`),
+  imported manually), **n8n-2** (read-only), **Supabase** (project `rrdgghwxuincfengkjyd`),
   **GitHub** (this repo). The api.btc Salesforce credential is `Salesforce Brian`
   (`E7YUDEqmGx2oThas`).
 
