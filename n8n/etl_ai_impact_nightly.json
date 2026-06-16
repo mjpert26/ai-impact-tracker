@@ -1,0 +1,88 @@
+{
+  "name": "AI Impact Tracker — Nightly Mart ETL (api.btc)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "15 6 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [-640, 320],
+      "id": "a1b2c3d4-0001-4001-8001-000000000001",
+      "name": "Nightly 06:15 UTC"
+    },
+    {
+      "parameters": {
+        "resource": "search",
+        "query": "SELECT Id, csbs__Commission_Amount__c, csbs__Funded_Date__c, Assisted_by__c FROM Opportunity WHERE StageName = 'Funded' AND csbs__Commission_Amount__c != null AND Assisted_by__c INCLUDES ('Inbox Manager - AI','Marketing - EW','Marketing - MA','Marketing - AR','Marketing - FT','Marketing - GS','Marketing - LP','Marketing - OC','Marketing - JB','NYS Auto DNQ')"
+      },
+      "type": "n8n-nodes-base.salesforce",
+      "typeVersion": 1,
+      "position": [-400, 320],
+      "id": "a1b2c3d4-0002-4002-8002-000000000002",
+      "name": "Pull funded AI-assisted opps",
+      "executeOnce": true,
+      "credentials": {
+        "salesforceOAuth2Api": {
+          "id": "E7YUDEqmGx2oThas",
+          "name": "Salesforce Brian"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate the raw funded AI-assisted opportunities into the three mart payloads.\n// Reproduces the documented SOQL methodology exactly:\n//   - headline / monthly: each opp counted once (Assisted_by__c is overwrite, not append)\n//   - per-bot: INCLUDES('<value>') == membership test on the multipicklist string\n\nconst WHITELIST = [\n  'Inbox Manager - AI', 'Marketing - EW', 'Marketing - MA', 'Marketing - AR',\n  'Marketing - FT', 'Marketing - GS', 'Marketing - LP', 'Marketing - OC',\n  'Marketing - JB', 'NYS Auto DNQ'\n];\n\nconst NOTES = {\n  'Inbox Manager - AI': 'Inbox Manager (all personas, aggregate)',\n  'Marketing - EW': 'Emma Wilson \\u2014 CONTAMINATED by Olivia hot-lead clone leftover; per-persona unreliable until n8n-2 fix',\n  'Marketing - MA': 'Megan Anderson',\n  'Marketing - AR': 'Anne Robinson',\n  'Marketing - FT': 'Faith Thompson',\n  'Marketing - GS': 'Gianna Scavina / Help & Info',\n  'Marketing - LP': 'Lauren Parker / New Deals Bot',\n  'Marketing - OC': 'Olivia',\n  'Marketing - JB': 'Jasmine Bennett / Reactivation Bot',\n  'NYS Auto DNQ': 'DND / Auto-DQ automation'\n};\n\nconst round2 = (n) => Math.round(n * 100) / 100;\nconst rows = $input.all().map((i) => i.json);\n\nlet total = 0;\nlet deals = 0;\nconst byMonth = {};\nconst byBot = {};\nfor (const v of WHITELIST) byBot[v] = { amt: 0, cnt: 0 };\n\nfor (const r of rows) {\n  const amt = Number(r.csbs__Commission_Amount__c);\n  if (!Number.isFinite(amt)) continue;\n  total += amt;\n  deals += 1;\n\n  const fd = r.csbs__Funded_Date__c;\n  if (fd) {\n    const ym = String(fd).slice(0, 7); // 'YYYY-MM'\n    byMonth[ym] = byMonth[ym] || { amt: 0, cnt: 0 };\n    byMonth[ym].amt += amt;\n    byMonth[ym].cnt += 1;\n  }\n\n  const tags = String(r.Assisted_by__c || '').split(';').map((s) => s.trim());\n  for (const v of WHITELIST) {\n    if (tags.includes(v)) {\n      byBot[v].amt += amt;\n      byBot[v].cnt += 1;\n    }\n  }\n}\n\nconst p_by_month = Object.keys(byMonth).sort().map((m) => ({\n  payout_month: m,\n  commission_amt: round2(byMonth[m].amt),\n  distinct_opps: byMonth[m].cnt\n}));\n\nconst p_by_bot = WHITELIST\n  .filter((v) => byBot[v].cnt > 0)\n  .map((v) => ({\n    assisted_by_value: v,\n    commission_amt: round2(byBot[v].amt),\n    distinct_opps: byBot[v].cnt,\n    note: NOTES[v] || null\n  }))\n  .sort((a, b) => b.commission_amt - a.commission_amt);\n\nconst p_kpis = [\n  { metric: 'total_commission_influenced', value: round2(total) },\n  { metric: 'funded_deals', value: deals },\n  { metric: 'avg_commission_per_deal', value: deals ? round2(total / deals) : 0 },\n  { metric: 'months_tracked', value: p_by_month.length }\n];\n\nreturn [{ json: { p_kpis, p_by_month, p_by_bot } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-160, 320],
+      "id": "a1b2c3d4-0003-4003-8003-000000000003",
+      "name": "Aggregate mart payloads"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://pvvrsvfucwncqseetbhe.supabase.co/rest/v1/rpc/refresh_ai_impact_mart",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [80, 320],
+      "id": "a1b2c3d4-0004-4004-8004-000000000004",
+      "name": "Upsert mart (Supabase RPC)",
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "REPLACE_WITH_SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase ai_impact (service_role)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Nightly 06:15 UTC": {
+      "main": [[{ "node": "Pull funded AI-assisted opps", "type": "main", "index": 0 }]]
+    },
+    "Pull funded AI-assisted opps": {
+      "main": [[{ "node": "Aggregate mart payloads", "type": "main", "index": 0 }]]
+    },
+    "Aggregate mart payloads": {
+      "main": [[{ "node": "Upsert mart (Supabase RPC)", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

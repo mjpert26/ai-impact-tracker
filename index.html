@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Bot Impact Tracker — BTC</title>
+<style>
+  :root {
+    --bg: #0b1220; --card: #131c2e; --line: #243049; --ink: #e8eefc;
+    --muted: #93a1c0; --accent: #4f86f7; --good: #34d399; --warn: #f5a524;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 64px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: .2px; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .pill { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .pill.live { color: var(--good); border-color: #1f5f47; }
+  .pill.snap { color: var(--warn); border-color: #5f4a1f; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 22px 0; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+  .kpi .v { font-size: 26px; font-weight: 700; }
+  .kpi .l { color: var(--muted); font-size: 12px; margin-top: 4px; text-transform: uppercase; letter-spacing: .6px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin: 16px 0; }
+  h2 { font-size: 15px; margin: 0 0 14px; }
+  .row { display: grid; grid-template-columns: 180px 1fr 130px; align-items: center; gap: 12px; padding: 6px 0; }
+  .row .name { color: var(--ink); font-size: 13px; }
+  .row .name small { color: var(--muted); display: block; font-size: 11px; }
+  .bar { height: 14px; background: linear-gradient(90deg, var(--accent), #7aa7ff); border-radius: 7px; min-width: 2px; }
+  .bar.contam { background: linear-gradient(90deg, var(--warn), #ffce7a); }
+  .amt { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+  .amt small { color: var(--muted); }
+  .note { color: var(--muted); font-size: 12px; margin-top: 12px; }
+  .banner { background: #2a2113; border: 1px solid #5f4a1f; color: #f5d489; border-radius: 10px; padding: 10px 14px; font-size: 13px; margin: 16px 0; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 26px; }
+  @media (max-width: 720px) { .kpis { grid-template-columns: repeat(2, 1fr); } .row { grid-template-columns: 120px 1fr 96px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>AI Bot Impact Tracker</h1>
+      <div class="sub">Salesforce commission influenced by BTC's in-house n8n-2 bots — attributed via <code>Opportunity.Assisted_by__c</code>.</div>
+    </div>
+    <span id="mode" class="pill">loading…</span>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="banner">
+    Figures are <strong>commission influenced</strong> (last milestone-writer per deal), not full attribution.
+    <strong>Marketing&nbsp;-&nbsp;EW</strong> is contaminated by an Olivia hot-lead clone leftover, so its per-persona total overstates Emma Wilson until fixed at the n8n-2 source.
+  </div>
+
+  <section>
+    <h2>Commission influenced by bot</h2>
+    <div id="byBot"></div>
+    <div class="note">Per-bot uses <code>INCLUDES(&lt;value&gt;)</code>. Because bots overwrite a single literal, values partition cleanly and sum back to the headline total.</div>
+  </section>
+
+  <section>
+    <h2>Commission influenced by payout month</h2>
+    <div id="byMonth"></div>
+  </section>
+
+  <footer>
+    Source: <code>Opportunity.csbs__Commission_Amount__c</code> on funded deals tagged with an in-house AI value.
+    Mart: Supabase <code>ai_impact</code> · refreshed nightly by the api.btc ETL.
+    <span id="asof"></span>
+  </footer>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Live mode: when SUPABASE_URL + SUPABASE_ANON are set, read the read-only
+// public views. Falls back to the baked snapshot if the fetch fails.
+// ---------------------------------------------------------------------------
+const SUPABASE_URL  = "https://pvvrsvfucwncqseetbhe.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dnJzdmZ1Y3duY3FzZWV0YmhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwOTgyNzYsImV4cCI6MjA5MTY3NDI3Nn0.awxlDCAcyIHbNDPNED7O5RCm030usoxyb2UXRNbR8lQ";
+
+// Baked snapshot (validated 2026-06-16) — fallback if live read is unavailable.
+const SNAPSHOT = {
+  kpis: {
+    total_commission_influenced: 952764.20,
+    funded_deals: 325,
+    avg_commission_per_deal: 2931.58,
+    months_tracked: 10
+  },
+  byBot: [
+    { assisted_by_value: "Marketing - EW", bot_name: "Emma Wilson (contaminated)", commission_amt: 335268.67, distinct_opps: 76 },
+    { assisted_by_value: "Marketing - MA", bot_name: "Megan Anderson", commission_amt: 263775.96, distinct_opps: 101 },
+    { assisted_by_value: "Marketing - OC", bot_name: "Olivia", commission_amt: 187671.43, distinct_opps: 74 },
+    { assisted_by_value: "Inbox Manager - AI", bot_name: "Inbox Manager (aggregate)", commission_amt: 126890.17, distinct_opps: 35 },
+    { assisted_by_value: "Marketing - FT", bot_name: "Faith Thompson", commission_amt: 21638.19, distinct_opps: 30 },
+    { assisted_by_value: "Marketing - AR", bot_name: "Anne Robinson", commission_amt: 16953.06, distinct_opps: 8 },
+    { assisted_by_value: "Marketing - JB", bot_name: "Jasmine Bennett / Reactivation", commission_amt: 566.72, distinct_opps: 1 }
+  ],
+  byMonth: [
+    { payout_month: "2025-09", commission_amt: 9406.26, distinct_opps: 5 },
+    { payout_month: "2025-10", commission_amt: 75382.44, distinct_opps: 16 },
+    { payout_month: "2025-11", commission_amt: 18206.88, distinct_opps: 7 },
+    { payout_month: "2025-12", commission_amt: 22851.36, distinct_opps: 9 },
+    { payout_month: "2026-01", commission_amt: 58808.99, distinct_opps: 22 },
+    { payout_month: "2026-02", commission_amt: 163043.45, distinct_opps: 52 },
+    { payout_month: "2026-03", commission_amt: 240681.31, distinct_opps: 67 },
+    { payout_month: "2026-04", commission_amt: 147913.41, distinct_opps: 52 },
+    { payout_month: "2026-05", commission_amt: 113840.12, distinct_opps: 61 },
+    { payout_month: "2026-06", commission_amt: 102629.98, distinct_opps: 34 }
+  ],
+  asOf: "2026-06-16"
+};
+
+const usd0 = (n) => "$" + Math.round(Number(n)).toLocaleString("en-US");
+const usd2 = (n) => "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; };
+
+async function pgrest(view, query) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${view}?${query}`, {
+    headers: { apikey: SUPABASE_ANON, Authorization: "Bearer " + SUPABASE_ANON }
+  });
+  if (!r.ok) throw new Error(view + " " + r.status);
+  return r.json();
+}
+
+async function loadLive() {
+  const [kpiRows, byBot, byMonth] = await Promise.all([
+    pgrest("ai_kpi_summary", "select=metric,value,as_of"),
+    pgrest("ai_commission_by_bot", "select=assisted_by_value,bot_name,commission_amt,distinct_opps&order=commission_amt.desc"),
+    pgrest("ai_commission_by_month", "select=payout_month,commission_amt,distinct_opps&order=payout_month.asc")
+  ]);
+  const kpis = {};
+  kpiRows.forEach((r) => { kpis[r.metric] = Number(r.value); });
+  const asOf = (kpiRows[0] && kpiRows[0].as_of) || "";
+  return { kpis, byBot, byMonth, asOf };
+}
+
+function setMode(kind) {
+  const m = document.getElementById("mode");
+  if (kind === "live") { m.textContent = "● live"; m.className = "pill live"; }
+  else { m.textContent = "● snapshot"; m.className = "pill snap"; }
+}
+
+function renderKpis(k) {
+  document.getElementById("kpis").replaceChildren(
+    el(`<div class="kpi"><div class="v">${usd0(k.total_commission_influenced)}</div><div class="l">Commission influenced</div></div>`),
+    el(`<div class="kpi"><div class="v">${Number(k.funded_deals).toLocaleString()}</div><div class="l">Funded deals</div></div>`),
+    el(`<div class="kpi"><div class="v">${usd0(k.avg_commission_per_deal)}</div><div class="l">Avg / deal</div></div>`),
+    el(`<div class="kpi"><div class="v">${Number(k.months_tracked)}</div><div class="l">Months tracked</div></div>`)
+  );
+}
+
+function renderBars(targetId, rows, labelFn, subFn, max) {
+  const host = document.getElementById(targetId);
+  host.replaceChildren();
+  rows.forEach((r) => {
+    const pct = Math.max(2, (Number(r.commission_amt) / max) * 100);
+    const contam = String(r.assisted_by_value || "").includes("EW");
+    host.appendChild(el(
+      `<div class="row">
+        <div class="name">${labelFn(r)}<small>${subFn(r)}</small></div>
+        <div><div class="bar ${contam ? "contam" : ""}" style="width:${pct}%"></div></div>
+        <div class="amt">${usd0(r.commission_amt)}<br><small>${r.distinct_opps} opps</small></div>
+      </div>`
+    ));
+  });
+}
+
+function render(d) {
+  renderKpis(d.kpis);
+  const maxBot = Math.max(...d.byBot.map((r) => Number(r.commission_amt)), 1);
+  renderBars("byBot", d.byBot, (r) => (r.bot_name || r.assisted_by_value), (r) => r.assisted_by_value, maxBot);
+  const maxMonth = Math.max(...d.byMonth.map((r) => Number(r.commission_amt)), 1);
+  renderBars("byMonth", d.byMonth, (r) => r.payout_month, () => "", maxMonth);
+  if (d.asOf) document.getElementById("asof").textContent = "· as of " + d.asOf;
+}
+
+(async function () {
+  if (SUPABASE_URL && SUPABASE_ANON) {
+    try { render(await loadLive()); setMode("live"); return; }
+    catch (e) { console.warn("Live read failed, using snapshot:", e); }
+  }
+  render(SNAPSHOT); setMode("snapshot");
+})();
+</script>
+</body>
+</html>
