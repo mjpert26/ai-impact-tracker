@@ -59,7 +59,7 @@ public.refresh_ai_impact_mart()  ── upserts ──▶  ai_impact.{fct_*, kpi
   `index.html` reads them live with the baked snapshot as fallback.
 - ⏳ **Deploy** — Vercel static from repo root; embed in Salesforce via Web Tab
   iframe.
-- ⏳ **Positive-replies tier** — blocked on GoHighLevel access.
+- 🟡 **Replies-sentiment tier (PoC built)** — `ai_impact.fct_replies` + `refresh_ai_impact_replies()` RPC + anon views live. Nightly GHL→Claude workflow `n8n/etl_ai_replies_nightly.json` (Megan sub-account) classifies inbound replies (Positive/Neutral/Negative/Opt-out); dashboard has a "Conversation sentiment" section (hidden until first run). Pending: create the `Anthropic (AI Impact)` n8n credential + import/run, then scale to all sub-accounts via a GHL OAuth app and add the per-lead Salesforce join.
 - ⏳ **Fix `Marketing - EW` clone** at the n8n-2 source.
 
 ## Repo map
@@ -68,8 +68,10 @@ public.refresh_ai_impact_mart()  ── upserts ──▶  ai_impact.{fct_*, kpi
 index.html                                  dashboard (Vercel root)
 supabase/migrations/0001_init_mart.sql       schema + dim_bot
 supabase/migrations/0002_etl_rpc_and_public_views.sql   ETL RPC + anon views
-n8n/etl_ai_impact_nightly.json               nightly ETL workflow (api.btc)
+n8n/etl_ai_impact_nightly.json               nightly commission ETL (api.btc)
+n8n/etl_ai_replies_nightly.json              nightly GHL replies-sentiment ETL (api.btc)
 n8n/README.md                                ETL deploy/credential steps
+supabase/migrations/0003_replies_tier.sql    replies tables + RPC + anon views
 docs/plan.md                                 phased build plan
 CLAUDE.md                                    context handoff
 ```

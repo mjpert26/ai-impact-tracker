@@ -161,7 +161,14 @@
     <div class="callout" id="callout"></div>
   </section>
 
-  <footer class="reveal" style="animation-delay:.28s">
+  <section class="card reveal" id="replyCard" style="animation-delay:.28s; display:none">
+    <h2>Conversation sentiment</h2>
+    <div class="h2sub" id="replySub">Inbound replies to the bots, classified by Claude.</div>
+    <div class="chips" id="replyChips" style="margin-top:2px"></div>
+    <div class="lead" id="replyBars" style="margin-top:14px"></div>
+  </section>
+
+  <footer class="reveal" style="animation-delay:.32s">
     <strong>Method:</strong> <code>SUM(csbs__Commission_Amount__c)</code> on <code>StageName='Funded'</code> opportunities tagged with an in-house AI value in <code>Assisted_by__c</code>.
     Figures are <em>commission influenced</em>, not full attribution. <span id="footmtd"></span><br>
     Source: Salesforce → Supabase <code>ai_impact</code> mart, refreshed nightly by the api.btc ETL.
@@ -213,15 +220,17 @@ async function pgrest(view, q) {
   return r.json();
 }
 async function loadLive() {
-  const [k, byBot, byMonth] = await Promise.all([
+  const [k, byBot, byMonth, replies] = await Promise.all([
     pgrest("ai_kpi_summary", "select=metric,value,as_of"),
     pgrest("ai_commission_by_bot", "select=assisted_by_value,bot_name,commission_amt,distinct_opps&order=commission_amt.desc"),
-    pgrest("ai_commission_by_month", "select=payout_month,commission_amt,distinct_opps&order=payout_month.asc")
+    pgrest("ai_commission_by_month", "select=payout_month,commission_amt,distinct_opps&order=payout_month.asc"),
+    pgrest("ai_replies_by_sentiment", "select=sentiment,reply_count").catch(() => [])
   ]);
   const kpis = {}; k.forEach((r) => kpis[r.metric] = Number(r.value));
   byBot.forEach((b) => { b.commission_amt = Number(b.commission_amt); b.distinct_opps = Number(b.distinct_opps); });
   byMonth.forEach((m) => { m.commission_amt = Number(m.commission_amt); m.distinct_opps = Number(m.distinct_opps); });
-  return { kpis, byBot, byMonth, asOf: (k[0] && k[0].as_of) || "" };
+  (replies || []).forEach((r) => { r.reply_count = Number(r.reply_count); });
+  return { kpis, byBot, byMonth, replies: replies || [], asOf: (k[0] && k[0].as_of) || "" };
 }
 
 function countUp(node, target, fmt, ms = 1500) {
@@ -348,7 +357,39 @@ function render(d) {
   document.getElementById("callout").innerHTML =
     `⚠ <b>Marketing&nbsp;-&nbsp;EW</b> is inflated by an Olivia hot-lead clone leftover, so it overstates Emma Wilson. Cleanest top performer: <b>${topClean.bot_name}</b> at ${fmtMoney0(topClean.commission_amt)} across ${topClean.distinct_opps} deals.`;
 
+  renderReplies(d.replies);
+
   if (d.asOf) document.getElementById("asof").textContent = "as of " + d.asOf;
+}
+
+function renderReplies(replies) {
+  const card = document.getElementById("replyCard");
+  if (!replies || !replies.length) return; // stays hidden until the GHL ETL runs
+  const ORDER = ["Positive", "Neutral", "Negative", "Opt-out"];
+  const COLOR = { Positive: "var(--emer)", Neutral: "var(--blue2)", Negative: "var(--warn)", "Opt-out": "var(--dim)" };
+  const by = {}; let total = 0;
+  replies.forEach((r) => { by[r.sentiment] = (by[r.sentiment] || 0) + r.reply_count; total += r.reply_count; });
+  const posPct = total ? Math.round(((by.Positive || 0) / total) * 100) : 0;
+
+  document.getElementById("replyChips").replaceChildren(
+    el(`<div class="chip"><div class="v">${total.toLocaleString()}</div><div class="l">Replies classified</div></div>`),
+    el(`<div class="chip"><div class="v">${posPct}<span class="u">%</span></div><div class="l">Positive</div></div>`),
+    el(`<div class="chip"><div class="v">${(by.Negative || 0).toLocaleString()}</div><div class="l">Negative</div></div>`),
+    el(`<div class="chip"><div class="v">${(by["Opt-out"] || 0).toLocaleString()}</div><div class="l">Opt-outs</div></div>`)
+  );
+
+  const max = Math.max(...ORDER.map((s) => by[s] || 0), 1);
+  document.getElementById("replyBars").replaceChildren(...ORDER.filter((s) => by[s]).map((s) => {
+    const node = el(`<div class="lrow lgrid">
+      <div class="rank">·</div>
+      <div class="who">${s}</div>
+      <div class="track"><div class="bar" style="width:0; background:${COLOR[s]}"></div></div>
+      <div class="amt">${(by[s] || 0).toLocaleString()}<span class="d">replies</span></div>
+    </div>`);
+    requestAnimationFrame(() => { node.querySelector(".bar").style.width = Math.max(2, ((by[s] || 0) / max) * 100) + "%"; });
+    return node;
+  }));
+  card.style.display = "";
 }
 
 function setMode(kind) {
