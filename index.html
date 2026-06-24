@@ -252,7 +252,7 @@ async function loadLive() {
     pgrest("ai_commission_by_bot", "select=assisted_by_value,bot_name,commission_amt,distinct_opps&order=commission_amt.desc"),
     pgrest("ai_commission_by_month", "select=payout_month,commission_amt,distinct_opps&order=payout_month.asc"),
     pgrest("ai_replies_by_sentiment", "select=sentiment,reply_count").catch(() => []),
-    pgrest("ai_reply_outcomes", "select=positive_replies,positive_advanced,advanced_pct").catch(() => [])
+    pgrest("ai_reply_outcomes", "select=positive_replies,positive_advanced,positive_funded,funded_commission").catch(() => [])
   ]);
   const kpis = {}; k.forEach((r) => kpis[r.metric] = Number(r.value));
   byBot.forEach((b) => { b.commission_amt = Number(b.commission_amt); b.distinct_opps = Number(b.distinct_opps); });
@@ -377,8 +377,15 @@ function renderReplies(replies, outcomes) {
   const ORDER = ["Positive", "Neutral", "Negative", "Opt-out"];
   const COLOR = { Positive: "var(--emer)", Neutral: "var(--blue2)", Negative: "var(--warn)", "Opt-out": "var(--dim)" };
   const info = document.getElementById("replyInfo");
-  const oc = (outcomes || []).reduce((a, o) => { a.pos += Number(o.positive_replies) || 0; a.adv += Number(o.positive_advanced) || 0; return a; }, { pos: 0, adv: 0 });
+  const oc = (outcomes || []).reduce((a, o) => {
+    a.pos += Number(o.positive_replies) || 0;
+    a.adv += Number(o.positive_advanced) || 0;
+    a.fund += Number(o.positive_funded) || 0;
+    a.comm += Number(o.funded_commission) || 0;
+    return a;
+  }, { pos: 0, adv: 0, fund: 0, comm: 0 });
   const advPct = oc.pos ? Math.round(100 * oc.adv / oc.pos) : null;
+  const fundPct = oc.pos ? Math.round(100 * oc.fund / oc.pos) : null;
 
   if (!replies || !replies.length) {
     document.getElementById("rhero").textContent = "—";
@@ -403,7 +410,9 @@ function renderReplies(replies, outcomes) {
     el(`<div class="chip"><div class="v">${(by.Negative || 0).toLocaleString()}</div><div class="l">Negative</div></div>`),
     el(`<div class="chip"><div class="v">${(by["Opt-out"] || 0).toLocaleString()}</div><div class="l">Opt-outs</div></div>`)
   ];
-  if (advPct !== null) chipNodes.push(el(`<div class="chip"><div class="v">${advPct}<span class="u">%</span></div><div class="l">Positive → won deal</div></div>`));
+  if (advPct !== null) chipNodes.push(el(`<div class="chip"><div class="v">${advPct}<span class="u">%</span></div><div class="l">Positive → handed off</div></div>`));
+  if (oc.fund > 0) chipNodes.push(el(`<div class="chip"><div class="v">${fundPct}<span class="u">%</span></div><div class="l">Positive → funded</div></div>`));
+  if (oc.comm > 0) chipNodes.push(el(`<div class="chip"><div class="v">${fmtK(oc.comm)}</div><div class="l">Funded commission (from replies)</div></div>`));
   document.getElementById("replyChips").replaceChildren(...chipNodes);
 
   const max = Math.max(...ORDER.map((s) => by[s] || 0), 1);
@@ -417,9 +426,10 @@ function renderReplies(replies, outcomes) {
     requestAnimationFrame(() => { node.querySelector(".bar").style.width = Math.max(2, ((by[s] || 0) / max) * 100) + "%"; });
     return node;
   }));
-  info.innerHTML = (advPct !== null
-    ? `🎯 <b>${advPct}% of positive replies advanced to a won opportunity</b> in GHL (${oc.adv} of ${oc.pos}). `
-    : "") + "PoC scope: <b>Megan Anderson</b> sub-account, most-recent conversations. Rolling out to all bot sub-accounts next.";
+  let line = "";
+  if (advPct !== null) line += `🤝 <b>${advPct}% of positive replies were handed off to a funding manager</b> (${oc.adv} of ${oc.pos}). `;
+  if (oc.fund > 0) line += `💰 <b>${fundPct}% funded</b>, worth <b>${fmtMoney0(oc.comm)}</b> in commission (Salesforce). `;
+  info.innerHTML = line + "PoC scope: <b>Megan Anderson</b> sub-account, recent conversations. Rolling out to all bot sub-accounts next.";
 }
 
 function setMode(kind) {
