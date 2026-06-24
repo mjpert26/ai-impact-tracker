@@ -59,7 +59,8 @@ public.refresh_ai_impact_mart()  ── upserts ──▶  ai_impact.{fct_*, kpi
   `index.html` reads them live with the baked snapshot as fallback.
 - ⏳ **Deploy** — Vercel static from repo root; embed in Salesforce via Web Tab
   iframe.
-- 🟡 **Replies-sentiment tier (PoC built)** — `ai_impact.fct_replies` + `refresh_ai_impact_replies()` RPC + anon views live. Nightly GHL→Claude workflow `n8n/etl_ai_replies_nightly.json` (Megan sub-account) classifies inbound replies (Positive/Neutral/Negative/Opt-out); dashboard has a "Conversation sentiment" section (hidden until first run). Pending: create the `Anthropic (AI Impact)` n8n credential + import/run, then scale to all sub-accounts via a GHL OAuth app and add the per-lead Salesforce join.
+- ✅ **Replies + outcomes tier (LIVE, Megan PoC)** — nightly GHL→Claude workflow `n8n/etl_ai_replies_nightly.json` (active on api.btc, 06:45 UTC) classifies inbound replies (Positive/Neutral/Negative/Opt-out) **and** correlates positive repliers to **won GHL opportunities** by `contactId`. Mart: `fct_replies`, `fct_reply_outcomes`, `dim_location`, RPCs `refresh_ai_impact_replies()` / `refresh_ai_impact_reply_outcomes()`, anon views. Validated: **55% positive reply rate, 37% of positive replies advance to a won deal** (Megan). Dashboard **Replies tab** shows it live.
+  - **Rollout pending:** all 20 sub-accounts via a GHL **agency OAuth app** (agency Private Integration tokens can't read sub-account conversations — confirmed 401). All 20 Location IDs already captured.
 - ⏳ **Fix `Marketing - EW` clone** at the n8n-2 source.
 
 ## Repo map
@@ -72,6 +73,7 @@ n8n/etl_ai_impact_nightly.json               nightly commission ETL (api.btc)
 n8n/etl_ai_replies_nightly.json              nightly GHL replies-sentiment ETL (api.btc)
 n8n/README.md                                ETL deploy/credential steps
 supabase/migrations/0003_replies_tier.sql    replies tables + RPC + anon views
+supabase/migrations/0004_reply_outcomes.sql  positive-reply -> won-opportunity outcomes
 docs/plan.md                                 phased build plan
 CLAUDE.md                                    context handoff
 ```

@@ -228,6 +228,7 @@ const SNAPSHOT = {
 const CONTAM = "Marketing - EW";
 const fmtMoney0 = (n) => "$" + Math.round(n).toLocaleString("en-US");
 const fmtK = (n) => n >= 1000 ? "$" + (n / 1000).toFixed(n >= 100000 ? 0 : 1) + "K" : "$" + Math.round(n);
+const fmtM = (n) => n >= 1e6 ? "$" + (n / 1e6).toFixed(2) + "M" : fmtK(n);
 const monLbl = (ym) => { const [y, m] = ym.split("-"); return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+m - 1] + " " + y.slice(2); };
 const monShort = (ym) => ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+ym.split("-")[1] - 1];
 const el = (h) => { const t = document.createElement("template"); t.innerHTML = h.trim(); return t.content.firstChild; };
@@ -246,17 +247,18 @@ async function pgrest(view, q) {
   return r.json();
 }
 async function loadLive() {
-  const [k, byBot, byMonth, replies] = await Promise.all([
+  const [k, byBot, byMonth, replies, outcomes] = await Promise.all([
     pgrest("ai_kpi_summary", "select=metric,value,as_of"),
     pgrest("ai_commission_by_bot", "select=assisted_by_value,bot_name,commission_amt,distinct_opps&order=commission_amt.desc"),
     pgrest("ai_commission_by_month", "select=payout_month,commission_amt,distinct_opps&order=payout_month.asc"),
-    pgrest("ai_replies_by_sentiment", "select=sentiment,reply_count").catch(() => [])
+    pgrest("ai_replies_by_sentiment", "select=sentiment,reply_count").catch(() => []),
+    pgrest("ai_reply_outcomes", "select=positive_replies,positive_advanced,advanced_pct").catch(() => [])
   ]);
   const kpis = {}; k.forEach((r) => kpis[r.metric] = Number(r.value));
   byBot.forEach((b) => { b.commission_amt = Number(b.commission_amt); b.distinct_opps = Number(b.distinct_opps); });
   byMonth.forEach((m) => { m.commission_amt = Number(m.commission_amt); m.distinct_opps = Number(m.distinct_opps); });
   (replies || []).forEach((r) => { r.reply_count = Number(r.reply_count); });
-  return { kpis, byBot, byMonth, replies: replies || [], asOf: (k[0] && k[0].as_of) || "" };
+  return { kpis, byBot, byMonth, replies: replies || [], outcomes: outcomes || [], asOf: (k[0] && k[0].as_of) || "" };
 }
 
 function countUp(node, target, fmt, ms = 1500) {
@@ -313,7 +315,11 @@ function render(d) {
 
   const yr = months.filter((m) => m.payout_month >= "2026-01").reduce((s, m) => s + m.commission_amt, 0);
   const peak = months.reduce((a, b) => b.commission_amt > a.commission_amt ? b : a);
+  const fullMonths = months.filter((m) => m.payout_month !== curYM);
+  const last3 = fullMonths.slice(-3);
+  const runRate = last3.length ? (last3.reduce((s, m) => s + m.commission_amt, 0) / last3.length) * 12 : 0;
   const chips = [
+    { v: fmtM(runRate), u: "/yr", l: "Annualized run-rate · last 3 mo" },
     { v: fmtMoney0(yr), u: "", l: "2026 year-to-date" },
     { v: monLbl(peak.payout_month), u: " · " + fmtK(peak.commission_amt), l: "Peak month" },
     { v: fmtMoney0(k.avg_commission_per_deal), u: "", l: "Avg / funded deal" },
@@ -363,14 +369,16 @@ function render(d) {
   document.getElementById("callout").innerHTML =
     `⚠ <b>Marketing&nbsp;-&nbsp;EW</b> is inflated by an Olivia hot-lead clone leftover, so it overstates Emma Wilson. Cleanest top performer: <b>${topClean.bot_name}</b> at ${fmtMoney0(topClean.commission_amt)} across ${topClean.distinct_opps} deals.`;
 
-  renderReplies(d.replies);
+  renderReplies(d.replies, d.outcomes);
   if (d.asOf) document.getElementById("asof").textContent = "as of " + d.asOf;
 }
 
-function renderReplies(replies) {
+function renderReplies(replies, outcomes) {
   const ORDER = ["Positive", "Neutral", "Negative", "Opt-out"];
   const COLOR = { Positive: "var(--emer)", Neutral: "var(--blue2)", Negative: "var(--warn)", "Opt-out": "var(--dim)" };
   const info = document.getElementById("replyInfo");
+  const oc = (outcomes || []).reduce((a, o) => { a.pos += Number(o.positive_replies) || 0; a.adv += Number(o.positive_advanced) || 0; return a; }, { pos: 0, adv: 0 });
+  const advPct = oc.pos ? Math.round(100 * oc.adv / oc.pos) : null;
 
   if (!replies || !replies.length) {
     document.getElementById("rhero").textContent = "—";
@@ -389,12 +397,14 @@ function renderReplies(replies) {
   document.getElementById("rherocap").innerHTML =
     `<b>${posPct}% of inbound replies are positive</b> — interested, ready to move forward — across <b>${total.toLocaleString()}</b> classified replies.`;
 
-  document.getElementById("replyChips").replaceChildren(
+  const chipNodes = [
     el(`<div class="chip"><div class="v">${total.toLocaleString()}</div><div class="l">Replies classified</div></div>`),
     el(`<div class="chip"><div class="v">${(by.Positive || 0).toLocaleString()}</div><div class="l">Positive</div></div>`),
     el(`<div class="chip"><div class="v">${(by.Negative || 0).toLocaleString()}</div><div class="l">Negative</div></div>`),
     el(`<div class="chip"><div class="v">${(by["Opt-out"] || 0).toLocaleString()}</div><div class="l">Opt-outs</div></div>`)
-  );
+  ];
+  if (advPct !== null) chipNodes.push(el(`<div class="chip"><div class="v">${advPct}<span class="u">%</span></div><div class="l">Positive → won deal</div></div>`));
+  document.getElementById("replyChips").replaceChildren(...chipNodes);
 
   const max = Math.max(...ORDER.map((s) => by[s] || 0), 1);
   document.getElementById("replyBars").replaceChildren(...ORDER.filter((s) => by[s]).map((s) => {
@@ -407,7 +417,9 @@ function renderReplies(replies) {
     requestAnimationFrame(() => { node.querySelector(".bar").style.width = Math.max(2, ((by[s] || 0) / max) * 100) + "%"; });
     return node;
   }));
-  info.innerHTML = "PoC scope: <b>Megan Anderson</b> sub-account, most-recent conversations. Rolling out to all bot sub-accounts next, plus linking positive replies to funded deals.";
+  info.innerHTML = (advPct !== null
+    ? `🎯 <b>${advPct}% of positive replies advanced to a won opportunity</b> in GHL (${oc.adv} of ${oc.pos}). `
+    : "") + "PoC scope: <b>Megan Anderson</b> sub-account, most-recent conversations. Rolling out to all bot sub-accounts next.";
 }
 
 function setMode(kind) {

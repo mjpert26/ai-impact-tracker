@@ -55,14 +55,19 @@ value. The ETL Code node reproduces all three from a single raw pull.
 1. **Deploy** — import the n8n workflow on api.btc (create the `Supabase ai_impact
    (service_role)` Custom Auth credential first — see `n8n/README.md`), run once,
    activate. Then deploy `index.html` to Vercel and embed in Salesforce via Web Tab.
-2. **Replies-sentiment tier — PoC built, pending deploy.** Mart: `ai_impact.fct_replies`,
-   `dim_location`, `refresh_ai_impact_replies()` RPC, anon views (migration 0003).
-   Workflow `n8n/etl_ai_replies_nightly.json`: GHL `conversations/search` → Claude Haiku
-   classify → Supabase RPC. Megan sub-account `htgHvVfBZ1WH3UpQoxaa` (= `Marketing - MA`).
-   GHL join to Salesforce is by **email/phone** (GHL stores only the SF *rep* User id in a
-   custom field, not the Lead/Opp). To finish: create `Anthropic (AI Impact)` n8n credential
-   (Custom Auth: `x-api-key` + `anthropic-version: 2023-06-01`), import + run, then scale to
-   all sub-accounts via a GHL OAuth app and add the per-lead SF join (positive→funded).
+2. **Replies + outcomes tier — LIVE (Megan PoC).** Workflow `AI Impact — GHL Replies +
+   Outcomes (Megan)` (api.btc id `NRacsxswGncEzd1g`, ACTIVE 06:45 UTC): GHL
+   `conversations/search` → Claude Haiku classify → GHL `opportunities/search` → correlate
+   positive repliers to **won opps by contactId** → two Supabase RPCs. Mart migrations 0003
+   (`fct_replies`, `dim_location`, `refresh_ai_impact_replies`) + 0004 (`fct_reply_outcomes`,
+   `refresh_ai_impact_reply_outcomes`, `ai_reply_outcomes` view). Validated: 55% positive,
+   **37% of positive replies → won deal**. Megan location `htgHvVfBZ1WH3UpQoxaa`.
+   Credentials: GHL Megan token baked in node; Anthropic cred `tkrE610QOjpv1yIn`; Supabase
+   cred `uB48zHhGKViNKUEe`. n8n MCP `create_workflow`/`update_workflow` are BROKEN (reject the
+   nodes array) — use paste-and-run + `activate_workflow`. GHL `monetaryValue` is 0 (use SF for $).
+   **Rollout TODO:** all 20 sub-accounts need a GHL **agency OAuth app** (agency PIT 401s on
+   conversations). All 20 Location IDs captured. Add pagination (conversations + opps capped at 100).
+   Commission ETL is Salesforce-sourced (all bots) — unaffected by the GHL rollout.
 3. **Fix `Marketing - EW` clone** at the n8n-2 source, then per-persona becomes trustworthy.
 
 ## Environment / MCPs
