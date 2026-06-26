@@ -55,19 +55,22 @@ value. The ETL Code node reproduces all three from a single raw pull.
 1. **Deploy** — import the n8n workflow on api.btc (create the `Supabase ai_impact
    (service_role)` Custom Auth credential first — see `n8n/README.md`), run once,
    activate. Then deploy `index.html` to Vercel and embed in Salesforce via Web Tab.
-2. **Replies + outcomes tier — LIVE (Megan PoC).** Workflow `AI Impact — GHL Replies +
-   Outcomes (Megan)` (api.btc id `NRacsxswGncEzd1g`, ACTIVE 06:45 UTC): GHL
-   `conversations/search` → Claude Haiku classify → GHL `opportunities/search` → correlate
-   positive repliers to **won opps by contactId** → two Supabase RPCs. Mart migrations 0003
-   (`fct_replies`, `dim_location`, `refresh_ai_impact_replies`) + 0004 (`fct_reply_outcomes`,
-   `refresh_ai_impact_reply_outcomes`, `ai_reply_outcomes` view). Validated: 55% positive,
-   **37% of positive replies → won deal**. Megan location `htgHvVfBZ1WH3UpQoxaa`.
-   Credentials: GHL Megan token baked in node; Anthropic cred `tkrE610QOjpv1yIn`; Supabase
-   cred `uB48zHhGKViNKUEe`. n8n MCP `create_workflow`/`update_workflow` are BROKEN (reject the
-   nodes array) — use paste-and-run + `activate_workflow`. GHL `monetaryValue` is 0 (use SF for $).
-   **Rollout TODO:** all 20 sub-accounts need a GHL **agency OAuth app** (agency PIT 401s on
-   conversations). All 20 Location IDs captured. Add pagination (conversations + opps capped at 100).
-   Commission ETL is Salesforce-sourced (all bots) — unaffected by the GHL rollout.
+2. **Replies + outcomes tier — LIVE, all 9 bots.** Workflow `AI Impact — GHL Replies +
+   Funded (ALL BOTS)` (api.btc id `ZFwC1XNpiHPoVOwh`, ACTIVE 06:45 UTC) loops 9 bot
+   sub-accounts: GHL `conversations/search` → Claude Haiku classify → GHL `opportunities/search`
+   (handoff) → Salesforce email→`Lead.ConvertedOpportunity` (funded $) → per-location RPC upserts.
+   Mart migrations 0003–0005 (`fct_replies`, `fct_reply_outcomes`, `dim_location` 9 bots, RPCs,
+   `ai_reply_outcomes` view w/ per-bot rows). Repo: `n8n/etl_ai_replies_all_bots.json` (tokens
+   REDACTED — real per-location `pit-` tokens live only in the n8n nodes).
+   - **Auth reality:** per-sub-account GHL Private Integration tokens (one per bot). Agency PIT
+     is 401-blocked from sub-account conversations; the marketplace OAuth app forced a card-gated
+     billing install (useless for internal accounts) — abandoned. Token→location map = `dim_location`.
+   - **Caveats:** GHL `monetaryValue`=0 (use SF for $). GHL `conversations/search` has NO
+     `nextPageUrl` (opps DO) → conversations are recent-100 per bot; "last message inbound" only
+     catches currently-open replies, so funded-from-replies lags. n8n MCP `create_workflow`/
+     `update_workflow` are BROKEN (reject nodes array) — use paste-and-run + `activate_workflow`.
+   - Old single-bot workflow `NRacsxswGncEzd1g` is deactivated+archived. Commission ETL
+     (Salesforce, all bots) is `2d7GZxMOPALS1UEe`, 06:15 — unaffected by GHL.
 3. **Fix `Marketing - EW` clone** at the n8n-2 source, then per-persona becomes trustworthy.
 
 ## Environment / MCPs

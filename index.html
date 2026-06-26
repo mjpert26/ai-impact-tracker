@@ -185,6 +185,12 @@
       <div class="lead" id="replyBars"></div>
       <div class="info" id="replyInfo"></div>
     </section>
+
+    <section class="card">
+      <h2>Reply performance by bot</h2>
+      <div class="h2sub">Positive replies → handed off → funded, per bot (live across all sub-accounts).</div>
+      <div class="lead lgrid-head" id="replyByBot"></div>
+    </section>
   </div>
 
   <footer class="reveal">
@@ -252,7 +258,7 @@ async function loadLive() {
     pgrest("ai_commission_by_bot", "select=assisted_by_value,bot_name,commission_amt,distinct_opps&order=commission_amt.desc"),
     pgrest("ai_commission_by_month", "select=payout_month,commission_amt,distinct_opps&order=payout_month.asc"),
     pgrest("ai_replies_by_sentiment", "select=sentiment,reply_count").catch(() => []),
-    pgrest("ai_reply_outcomes", "select=positive_replies,positive_advanced,positive_funded,funded_commission").catch(() => [])
+    pgrest("ai_reply_outcomes", "select=bot_name,positive_replies,positive_advanced,advanced_pct,positive_funded,funded_pct,funded_commission&order=positive_replies.desc").catch(() => [])
   ]);
   const kpis = {}; k.forEach((r) => kpis[r.metric] = Number(r.value));
   byBot.forEach((b) => { b.commission_amt = Number(b.commission_amt); b.distinct_opps = Number(b.distinct_opps); });
@@ -429,7 +435,23 @@ function renderReplies(replies, outcomes) {
   let line = "";
   if (advPct !== null) line += `🤝 <b>${advPct}% of positive replies were handed off to a funding manager</b> (${oc.adv} of ${oc.pos}). `;
   if (oc.fund > 0) line += `💰 <b>${fundPct}% funded</b>, worth <b>${fmtMoney0(oc.comm)}</b> in commission (Salesforce). `;
-  info.innerHTML = line + "PoC scope: <b>Megan Anderson</b> sub-account, recent conversations. Rolling out to all bot sub-accounts next.";
+  info.innerHTML = line + `Live across <b>${(outcomes || []).length} bot sub-accounts</b> via GoHighLevel, refreshed nightly.`;
+
+  // per-bot leaderboard
+  const host = document.getElementById("replyByBot");
+  if (host) {
+    const rows = (outcomes || []).filter((o) => Number(o.positive_replies) > 0);
+    host.replaceChildren(...rows.map((o, i) => {
+      const adv = Number(o.advanced_pct) || 0;
+      const comm = Number(o.funded_commission) || 0;
+      return el(`<div class="lrow lgrid">
+        <div class="rank">${i + 1}</div>
+        <div class="who">${o.bot_name}<small>${o.positive_replies} positive replies</small></div>
+        <div class="track"><div class="bar" style="width:${Math.max(2, adv)}%; background:var(--emer)"></div></div>
+        <div class="amt">${adv}% handoff<span class="d">${comm > 0 ? fmtK(comm) + " funded" : "—"}</span></div>
+      </div>`);
+    }));
+  }
 }
 
 function setMode(kind) {

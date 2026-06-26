@@ -59,8 +59,8 @@ public.refresh_ai_impact_mart()  ── upserts ──▶  ai_impact.{fct_*, kpi
   `index.html` reads them live with the baked snapshot as fallback.
 - ⏳ **Deploy** — Vercel static from repo root; embed in Salesforce via Web Tab
   iframe.
-- ✅ **Replies + outcomes tier (LIVE, Megan PoC)** — nightly GHL→Claude workflow `n8n/etl_ai_replies_nightly.json` (active on api.btc, 06:45 UTC) classifies inbound replies (Positive/Neutral/Negative/Opt-out) **and** correlates positive repliers to **won GHL opportunities** by `contactId`. Mart: `fct_replies`, `fct_reply_outcomes`, `dim_location`, RPCs `refresh_ai_impact_replies()` / `refresh_ai_impact_reply_outcomes()`, anon views. Validated: **55% positive reply rate, 37% of positive replies advance to a won deal** (Megan). Dashboard **Replies tab** shows it live.
-  - **Rollout pending:** all 20 sub-accounts via a GHL **agency OAuth app** (agency Private Integration tokens can't read sub-account conversations — confirmed 401). All 20 Location IDs already captured.
+- ✅ **Replies + outcomes tier (LIVE, all 9 bots)** — nightly GHL→Claude workflow `n8n/etl_ai_replies_all_bots.json` (api.btc id `ZFwC1XNpiHPoVOwh`, active 06:45 UTC) loops all 9 bot sub-accounts: classifies inbound replies (Positive/Neutral/Negative/Opt-out), correlates positive repliers to **handed-off GHL opportunities** by `contactId`, and joins to **Salesforce funded commission** by email (`Lead.ConvertedOpportunity`). Mart: `fct_replies`, `fct_reply_outcomes`, `dim_location` (9 bots), RPCs + anon views (incl. per-bot `ai_reply_outcomes`). Dashboard **Replies tab** shows aggregate + per-bot breakdown live.
+  - **Auth:** per-sub-account GHL Private Integration tokens (one per bot). The agency OAuth app route was abandoned — GHL agency PITs are 401-blocked from sub-account conversations, and the marketplace app forced a card-gated billing install unusable for internal accounts.
 - ⏳ **Fix `Marketing - EW` clone** at the n8n-2 source.
 
 ## Repo map
@@ -70,7 +70,7 @@ index.html                                  dashboard (Vercel root)
 supabase/migrations/0001_init_mart.sql       schema + dim_bot
 supabase/migrations/0002_etl_rpc_and_public_views.sql   ETL RPC + anon views
 n8n/etl_ai_impact_nightly.json               nightly commission ETL (api.btc)
-n8n/etl_ai_replies_nightly.json              nightly GHL replies-sentiment ETL (api.btc)
+n8n/etl_ai_replies_all_bots.json             nightly GHL replies+funded ETL, all 9 bots (api.btc; tokens redacted)
 n8n/README.md                                ETL deploy/credential steps
 supabase/migrations/0003_replies_tier.sql    replies tables + RPC + anon views
 supabase/migrations/0004_reply_outcomes.sql  positive-reply -> won-opportunity outcomes

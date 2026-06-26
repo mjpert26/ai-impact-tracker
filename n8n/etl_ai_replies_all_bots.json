@@ -1,0 +1,289 @@
+{
+  "name": "AI Impact \u2014 GHL Replies + Funded (ALL BOTS)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "45 6 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1300,
+        300
+      ],
+      "id": "ee00-0001",
+      "name": "Nightly 06:45 UTC"
+    },
+    {
+      "parameters": {
+        "jsCode": "const BOTS=[{loc:'htgHvVfBZ1WH3UpQoxaa',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'PXyGarBjp2lwuVBdA81P',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'1lP8kn6tPERda0fT4zVT',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'XAF0RGBybE8RoesJhSiz',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'96LqPx5WmcloFPZZe1hy',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'kuO6oj3iKtz5PQUu4WZ0',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'NsDKFz05b8v0P86nTc2o',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'sEjuiURUKweddSIqjcjT',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'qT3OTNWfVeq0tNWklhMK',tok:'pit-REDACTED_PER_LOCATION_TOKEN'}];\nconst out=[];\nfor(const b of BOTS){\n  let url='https://services.leadconnectorhq.com/conversations/search?locationId='+b.loc+'&limit=100&sortBy=last_message_date&sort=desc';\n  let pages=0;\n  while(url&&pages<30){\n    let resp;\n    try{resp=await this.helpers.httpRequest({method:'GET',url,headers:{Authorization:'Bearer '+b.tok,Version:'2021-04-15'},json:true});}catch(e){break;}\n    const convs=(resp&&resp.conversations)||[];\n    for(const c of convs){if(c.lastMessageDirection!=='inbound')continue;const body=(c.lastMessageBody||'').trim();if(!body)continue;out.push({json:{location_id:b.loc,contactId:c.contactId,email:c.email||null,ts:c.lastMessageDate,body:body.slice(0,2000)}});}\n    url=(resp&&resp.meta&&resp.meta.nextPageUrl)?resp.meta.nextPageUrl:null;\n    pages++;\n  }\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1100,
+        300
+      ],
+      "id": "ee00-0002",
+      "name": "Fetch + extract replies (all bots)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 8, system: \"Classify the customer's reply to a sales/marketing outreach into EXACTLY one word: Positive, Neutral, Negative, or Opt-out. Positive = interested, wants to proceed, asks to move forward. Negative = not interested, frustrated, declines. Opt-out = asks to stop/unsubscribe/remove or legal threat. Neutral = anything else. Output ONLY the one word.\", messages: [ { role: 'user', content: String($json.body) } ] }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -880,
+        300
+      ],
+      "id": "ee00-0003",
+      "name": "Classify (Claude Haiku)",
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "tkrE610QOjpv1yIn",
+          "name": "Anthropic (AI Impact)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const meta=$('Fetch + extract replies (all bots)').all();\nconst resps=$input.all();\nfunction norm(t){t=String(t||'').toLowerCase();if(t.includes('opt'))return 'Opt-out';if(t.includes('posit'))return 'Positive';if(t.includes('negat'))return 'Negative';return 'Neutral';}\nconst replies=[];\nfor(let i=0;i<meta.length;i++){let txt='';try{txt=resps[i].json.content[0].text;}catch(e){txt='';}replies.push({location_id:meta[i].json.location_id,contactId:meta[i].json.contactId,email:meta[i].json.email,sentiment:norm(txt),ts:meta[i].json.ts});}\nreturn [{json:{replies}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -660,
+        300
+      ],
+      "id": "ee00-0004",
+      "name": "Collect classified"
+    },
+    {
+      "parameters": {
+        "jsCode": "const BOTS=[{loc:'htgHvVfBZ1WH3UpQoxaa',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'PXyGarBjp2lwuVBdA81P',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'1lP8kn6tPERda0fT4zVT',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'XAF0RGBybE8RoesJhSiz',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'96LqPx5WmcloFPZZe1hy',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'kuO6oj3iKtz5PQUu4WZ0',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'NsDKFz05b8v0P86nTc2o',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'sEjuiURUKweddSIqjcjT',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'qT3OTNWfVeq0tNWklhMK',tok:'pit-REDACTED_PER_LOCATION_TOKEN'}];\nconst oppsWon={};\nfor(const b of BOTS){\n  oppsWon[b.loc]=[];\n  let url='https://services.leadconnectorhq.com/opportunities/search?location_id='+b.loc+'&limit=100';\n  let pages=0;\n  while(url&&pages<30){\n    let resp;\n    try{resp=await this.helpers.httpRequest({method:'GET',url,headers:{Authorization:'Bearer '+b.tok,Version:'2021-07-28'},json:true});}catch(e){break;}\n    const opps=(resp&&resp.opportunities)||[];\n    for(const o of opps){if(o.status==='won')oppsWon[b.loc].push(o.contactId);}\n    url=(resp&&resp.meta&&resp.meta.nextPageUrl)?resp.meta.nextPageUrl:null;\n    pages++;\n  }\n}\nreturn [{json:{oppsWon}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -440,
+        300
+      ],
+      "id": "ee00-0005",
+      "name": "Fetch opportunities (all bots)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const replies=$('Collect classified').first().json.replies||[];\nconst emails=[...new Set(replies.filter(r=>r.sentiment==='Positive'&&r.email&&!String(r.email).includes(\"'\")).map(r=>String(r.email).trim()))];\nconst inList=emails.length?emails.map(e=>\"'\"+e+\"'\").join(','):\"''\";\nconst soql=\"SELECT Email, ConvertedOpportunity.StageName, ConvertedOpportunity.csbs__Commission_Amount__c FROM Lead WHERE IsConverted = true AND Email IN (\"+inList+\")\";\nreturn [{json:{soql}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -220,
+        300
+      ],
+      "id": "ee00-0006",
+      "name": "Build SF query"
+    },
+    {
+      "parameters": {
+        "resource": "search",
+        "query": "={{ $json.soql }}"
+      },
+      "type": "n8n-nodes-base.salesforce",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ],
+      "id": "ee00-0007",
+      "name": "SF funded lookup",
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "salesforceOAuth2Api": {
+          "id": "E7YUDEqmGx2oThas",
+          "name": "Salesforce Brian"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const replies=$('Collect classified').first().json.replies||[];\nconst oppsWon=$('Fetch opportunities (all bots)').first().json.oppsWon||{};\nconst sf=$input.all().map(i=>i.json).filter(x=>x&&x.Email);\nconst fundedByEmail={};\nfor(const row of sf){const email=String(row.Email).toLowerCase();const opp=row.ConvertedOpportunity||{};if(opp.StageName==='Funded')fundedByEmail[email]=(fundedByEmail[email]||0)+Number(opp.csbs__Commission_Amount__c||0);}\nconst byLoc={};\nfor(const r of replies){(byLoc[r.location_id]=byLoc[r.location_id]||[]).push(r);}\nconst out=[];\nfor(const loc of Object.keys(byLoc)){\n  const rs=byLoc[loc];\n  const counts={};\n  for(const r of rs){const d=new Date(Number(r.ts));const ym=d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0');counts[ym+'|'+r.sentiment]=(counts[ym+'|'+r.sentiment]||0)+1;}\n  const p_rows=Object.entries(counts).map(([k,v])=>{const a=k.split('|');return{payout_month:a[0],sentiment:a[1],reply_count:v};});\n  const won=new Set(oppsWon[loc]||[]);\n  const posReplies=rs.filter(r=>r.sentiment==='Positive');\n  const posContacts=new Set(posReplies.map(r=>r.contactId).filter(Boolean));\n  let advanced=0;for(const c of posContacts)if(won.has(c))advanced++;\n  const posEmails=[...new Set(posReplies.map(r=>(r.email||'').toLowerCase()).filter(Boolean))];\n  let positive_funded=0,funded_commission=0;\n  for(const e of posEmails)if(fundedByEmail[e]!==undefined){positive_funded++;funded_commission+=fundedByEmail[e];}\n  funded_commission=Math.round(funded_commission*100)/100;\n  out.push({json:{p_location:loc,p_rows,p_positive_replies:posContacts.size,p_positive_advanced:advanced,p_positive_funded:positive_funded,p_funded_commission:funded_commission}});\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "id": "ee00-0008",
+      "name": "Aggregate per bot"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rrdgghwxuincfengkjyd.supabase.co/rest/v1/rpc/refresh_ai_impact_replies",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_location: $json.p_location, p_rows: $json.p_rows }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        440,
+        200
+      ],
+      "id": "ee00-0009",
+      "name": "Upsert sentiment",
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "uB48zHhGKViNKUEe",
+          "name": "Supabase ai_impact (service_role)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rrdgghwxuincfengkjyd.supabase.co/rest/v1/rpc/refresh_ai_impact_reply_outcomes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_location: $json.p_location, p_positive_replies: $json.p_positive_replies, p_positive_advanced: $json.p_positive_advanced, p_positive_funded: $json.p_positive_funded, p_funded_commission: $json.p_funded_commission }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        440,
+        400
+      ],
+      "id": "ee00-0010",
+      "name": "Upsert outcomes",
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "uB48zHhGKViNKUEe",
+          "name": "Supabase ai_impact (service_role)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Nightly 06:45 UTC": {
+      "main": [
+        [
+          {
+            "node": "Fetch + extract replies (all bots)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch + extract replies (all bots)": {
+      "main": [
+        [
+          {
+            "node": "Classify (Claude Haiku)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify (Claude Haiku)": {
+      "main": [
+        [
+          {
+            "node": "Collect classified",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect classified": {
+      "main": [
+        [
+          {
+            "node": "Fetch opportunities (all bots)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch opportunities (all bots)": {
+      "main": [
+        [
+          {
+            "node": "Build SF query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build SF query": {
+      "main": [
+        [
+          {
+            "node": "SF funded lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SF funded lookup": {
+      "main": [
+        [
+          {
+            "node": "Aggregate per bot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate per bot": {
+      "main": [
+        [
+          {
+            "node": "Upsert sentiment",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Upsert outcomes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
