@@ -165,6 +165,14 @@
   .pill.fresh { color: var(--emer); border-color: rgba(52,211,153,.3); background: rgba(52,211,153,.08); }
   .pill.stale { color: var(--warn); border-color: rgba(245,165,36,.3); background: rgba(245,165,36,.08); }
   @media (max-width: 820px) { .execband { grid-template-columns: repeat(2, 1fr); } .kc.spark { grid-column: 1 / -1; } }
+  /* funnel */
+  .funnel { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+  .fstage { position: relative; border-radius: 10px; padding: 13px 16px; overflow: hidden; border: 1px solid var(--line); background: rgba(10,17,32,.5); }
+  .fstage .ffill { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(79,134,247,.28), rgba(52,211,153,.14)); border-right: 2px solid var(--blue); transition: width .9s cubic-bezier(.22,1,.36,1); }
+  .fstage .frow { position: relative; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .fstage .fl { font-weight: 700; font-size: 14px; }
+  .fstage .fv { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 16px; }
+  .fstage .fc { position: relative; color: var(--dim); font-size: 11.5px; margin-top: 2px; }
   @media print {
     body { background: #fff; color: #000; }
     .tabs, .pill.btn, .badges { display: none !important; }
@@ -209,6 +217,11 @@
       <div id="shero" class="big" style="font-size:clamp(30px,5.5vw,52px)">—</div>
       <div class="cap" id="sherocap"></div>
     </div>
+    <section class="card">
+      <h2>AI pipeline funnel</h2>
+      <div class="h2sub">From leads worked to commission influenced — the full top-of-funnel engine.</div>
+      <div class="funnel" id="funnel"></div>
+    </section>
     <section class="card">
       <h2>Bot scorecard</h2>
       <div class="h2sub">Funded revenue + reply engagement per bot, each with a recommended action. Sorted by funded commission.</div>
@@ -346,6 +359,7 @@ const SNAPSHOT = {
     { payout_month: "2026-06", commission_amt: 145557.25, distinct_opps: 58 }
   ],
   replies: [],
+  funnel: { leads: 8721, meetings: 1301, funded: 349, commission: 995691.47 },
   asOf: "2026-06-29"
 };
 
@@ -477,10 +491,35 @@ function renderExecBand(d) {
   );
 }
 
+function renderFunnel(d) {
+  const f = (d && d.funnel) || SNAPSHOT.funnel;
+  const host = document.getElementById("funnel");
+  if (!f) { host.replaceChildren(); return; }
+  const stages = [
+    { l: "Leads worked", v: f.leads, c: "AI bots engaged these leads" },
+    { l: "Meetings booked", v: f.meetings, c: (100 * f.meetings / f.leads).toFixed(1) + "% of leads booked a meeting" },
+    { l: "Funded deals", v: f.funded, c: (100 * f.funded / f.meetings).toFixed(1) + "% of meetings funded · " + (100 * f.funded / f.leads).toFixed(1) + "% of leads" }
+  ];
+  host.replaceChildren(
+    ...stages.map((s) => {
+      const w = Math.max(6, 100 * s.v / f.leads);
+      const node = el(`<div class="fstage"><div class="ffill" style="width:0"></div>
+        <div class="frow"><span class="fl">${s.l}</span><span class="fv">${s.v.toLocaleString()}</span></div>
+        <div class="fc">${s.c}</div></div>`);
+      requestAnimationFrame(() => { node.querySelector(".ffill").style.width = w + "%"; });
+      return node;
+    }),
+    el(`<div class="fstage" style="border-color:rgba(52,211,153,.35);background:rgba(52,211,153,.06)">
+      <div class="frow"><span class="fl">Commission influenced</span><span class="fv" style="color:var(--emer)">${fmtMoney0(f.commission)}</span></div>
+      <div class="fc">~${fmtMoney0(f.commission / f.meetings)} per meeting booked · ~${fmtMoney0(f.commission / f.funded)} per funded deal</div></div>`)
+  );
+}
+
 function render(d) {
   const k = d.kpis, months = d.byMonth, bots = d.byBot;
   const curYM = nowYM();
   renderExecBand(d);
+  renderFunnel(d);
 
   countUp(document.getElementById("hero"), k.total_commission_influenced, fmtMoney0);
   document.getElementById("herocap").innerHTML =
