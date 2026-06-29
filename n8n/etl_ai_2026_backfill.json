@@ -1,0 +1,82 @@
+{
+  "name": "AI Impact \u2014 2026 Records Backfill (run once)",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "name": "Run once"
+    },
+    {
+      "parameters": {
+        "jsCode": "const BOTS=[{loc:'htgHvVfBZ1WH3UpQoxaa',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'PXyGarBjp2lwuVBdA81P',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'1lP8kn6tPERda0fT4zVT',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'XAF0RGBybE8RoesJhSiz',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'96LqPx5WmcloFPZZe1hy',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'kuO6oj3iKtz5PQUu4WZ0',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'NsDKFz05b8v0P86nTc2o',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'sEjuiURUKweddSIqjcjT',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'qT3OTNWfVeq0tNWklhMK',tok:'pit-REDACTED_PER_LOCATION_TOKEN'}];\nconst START=Date.parse('2026-01-01T00:00:00Z');\nconst out=[];\nfor(const b of BOTS){\n  const seen={}; const detail=[]; let after=null; let pages=0; let done=false;\n  while(!done && pages<800){\n    let url='https://services.leadconnectorhq.com/conversations/search?locationId='+b.loc+'&limit=100&sortBy=last_message_date&sort=desc';\n    if(after) url+='&startAfterDate='+after;\n    let resp;\n    try{resp=await this.helpers.httpRequest({method:'GET',url,headers:{Authorization:'Bearer '+b.tok,Version:'2021-04-15'},json:true});}catch(e){break;}\n    const convs=(resp&&resp.conversations)||[];\n    if(!convs.length) break;\n    let oldest=null;\n    for(const c of convs){\n      const ts=Number(c.lastMessageDate||c.dateUpdated||0);\n      if(oldest===null||ts<oldest) oldest=ts;\n      if(ts && ts<START){ done=true; continue; }\n      if(!c.contactId||seen[c.contactId]) continue; seen[c.contactId]=1;\n      const d=new Date(ts); const ym=d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0');\n      const body=(c.lastMessageBody||'').trim();\n      detail.push({contact_id:c.contactId,payout_month:ym,contact_name:(c.fullName||c.contactName||''),email:c.email||null,sentiment:'Unclassified',last_message:body?body.slice(0,1500):null,sf_lead_id:null,sf_stage:null,funded_commission:0,ts:ts});\n    }\n    if(oldest===null||oldest<START){ done=true; }\n    after=oldest; pages++;\n  }\n  out.push({json:{p_location:b.loc,p_detail:detail,count:detail.length}});\n}\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "22222222-2222-4222-8222-222222222222",
+      "name": "Backfill 2026 conversations (all bots)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rrdgghwxuincfengkjyd.supabase.co/rest/v1/rpc/refresh_ai_impact_reply_detail",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_location: $json.p_location, p_rows: $json.p_detail }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        440,
+        0
+      ],
+      "id": "33333333-3333-4333-8333-333333333333",
+      "name": "Upsert detail (accumulate)",
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "uB48zHhGKViNKUEe",
+          "name": "Supabase ai_impact (service_role)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Run once": {
+      "main": [
+        [
+          {
+            "node": "Backfill 2026 conversations (all bots)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Backfill 2026 conversations (all bots)": {
+      "main": [
+        [
+          {
+            "node": "Upsert detail (accumulate)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
