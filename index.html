@@ -149,6 +149,29 @@
   }
   @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
   .reveal { animation: rise .7s both; }
+
+  /* executive KPI band */
+  .execband { display: grid; grid-template-columns: repeat(4, 1fr) 1.3fr; gap: 12px; margin: 4px 0 18px; }
+  .kc { background: linear-gradient(180deg, rgba(20,28,48,.7), rgba(13,19,34,.7)); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .kc .kl { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+  .kc .kv { font-size: clamp(20px, 2.6vw, 30px); font-weight: 800; letter-spacing: -.5px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .kc .kd { font-size: 12px; font-weight: 700; margin-top: 4px; display: inline-flex; align-items: center; gap: 4px; }
+  .kc .kd small { color: var(--dim); font-weight: 500; }
+  .kd.up { color: var(--emer); } .kd.down { color: var(--warn); } .kd.flat { color: var(--dim); }
+  .kc.spark { display: flex; flex-direction: column; justify-content: space-between; }
+  .kc.spark .sparkwrap { margin-top: 6px; }
+  .pill.btn { cursor: pointer; border: 1px solid var(--line); background: rgba(79,134,247,.12); color: var(--ink); }
+  .pill.btn:hover { background: rgba(79,134,247,.22); }
+  .pill.fresh { color: var(--emer); border-color: rgba(52,211,153,.3); background: rgba(52,211,153,.08); }
+  .pill.stale { color: var(--warn); border-color: rgba(245,165,36,.3); background: rgba(245,165,36,.08); }
+  @media (max-width: 820px) { .execband { grid-template-columns: repeat(2, 1fr); } .kc.spark { grid-column: 1 / -1; } }
+  @media print {
+    body { background: #fff; color: #000; }
+    .tabs, .pill.btn, .badges { display: none !important; }
+    .panel { display: block !important; page-break-inside: avoid; }
+    .reveal { animation: none !important; }
+    .card, .kc, .hero { border-color: #ccc !important; }
+  }
 </style>
 </head>
 <body>
@@ -158,14 +181,19 @@
       <div class="logo">BTC</div>
       <div>
         <h1>AI Bot Impact Tracker</h1>
-        <div class="sub">Big Think Capital · in-house AI on n8n-2</div>
+        <div class="sub">Big Think Capital · in-house AI bots</div>
       </div>
     </div>
     <div class="badges">
+      <span id="fresh" class="pill"></span>
       <span id="asof" class="pill"></span>
       <span id="mode" class="pill">loading…</span>
+      <button id="printbtn" class="pill btn" title="Export to PDF">⤓ PDF</button>
     </div>
   </header>
+
+  <!-- executive KPI band -->
+  <div class="execband reveal" id="execband"></div>
 
   <div class="tabs reveal">
     <button class="tab active" data-tab="scorecard">📋 Scorecard</button>
@@ -186,6 +214,24 @@
       <div class="h2sub">Funded revenue + reply engagement per bot, each with a recommended action. Sorted by funded commission.</div>
       <div class="lead" id="scorecard"></div>
       <div class="callout" id="scorecardnote"></div>
+    </section>
+    <section class="card">
+      <details>
+        <summary style="cursor:pointer;font-weight:700;font-size:14px">📐 Methodology &amp; definitions</summary>
+        <div class="info" style="margin-top:12px">
+          <b>What "commission influenced" means.</b> The sum of <code>csbs__Commission_Amount__c</code> on Salesforce
+          opportunities that (a) reached <code>StageName = Funded</code> and (b) carry an in-house AI bot value in the
+          multi-select <code>Assisted_by__c</code> field. It is <b>influence, not sole credit</b> — a bot touched the deal;
+          humans closed it.<br><br>
+          <b>Attribution = last milestone-writer.</b> Bots overwrite <code>Assisted_by__c</code> with a single value, so a
+          deal is credited to the <b>last</b> bot that worked it. Per-bot figures sum <b>exactly</b> to the headline
+          (verified — no double-counting).<br><br>
+          <b>Known caveat.</b> <code>Marketing - EW</code> still contains Gianna Scavina's pre-fix deals (her bot wrote
+          Emma's tag until 2026-06-29); historical re-tag pending. All other bots are clean.<br><br>
+          <b>Refresh.</b> Salesforce commission + GoHighLevel replies are pulled nightly into the Supabase
+          <code>ai_impact</code> mart; this dashboard reads it live with a baked snapshot as fallback.
+        </div>
+      </details>
     </section>
   </div>
 
@@ -277,9 +323,9 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 // Baked snapshot (validated 2026-06-29) — fallback if the live read is unavailable.
 const SNAPSHOT = {
-  kpis: { total_commission_influenced: 994411.47, funded_deals: 347, avg_commission_per_deal: 2865.74, months_tracked: 10 },
+  kpis: { total_commission_influenced: 995691.47, funded_deals: 349, avg_commission_per_deal: 2852.98, months_tracked: 10 },
   byBot: [
-    { assisted_by_value: "Marketing - EW", bot_name: "Emma Wilson (contaminated)", commission_amt: 345411.43, distinct_opps: 81 },
+    { assisted_by_value: "Marketing - EW", bot_name: "Emma Wilson (incl. Gianna pre-fix)", commission_amt: 346691.43, distinct_opps: 83 },
     { assisted_by_value: "Marketing - MA", bot_name: "Megan Anderson", commission_amt: 273885.96, distinct_opps: 105 },
     { assisted_by_value: "Marketing - OC", bot_name: "Olivia", commission_amt: 208173.46, distinct_opps: 85 },
     { assisted_by_value: "Inbox Manager - AI", bot_name: "Inbox Manager (aggregate)", commission_amt: 126890.17, distinct_opps: 35 },
@@ -297,7 +343,7 @@ const SNAPSHOT = {
     { payout_month: "2026-03", commission_amt: 240681.31, distinct_opps: 67 },
     { payout_month: "2026-04", commission_amt: 147913.41, distinct_opps: 52 },
     { payout_month: "2026-05", commission_amt: 113840.12, distinct_opps: 61 },
-    { payout_month: "2026-06", commission_amt: 144277.25, distinct_opps: 56 }
+    { payout_month: "2026-06", commission_amt: 145557.25, distinct_opps: 58 }
   ],
   replies: [],
   asOf: "2026-06-29"
@@ -384,9 +430,57 @@ function areaChart(months) {
   </svg>`;
 }
 
+function spark(vals, w = 200, h = 42) {
+  const max = Math.max(...vals), min = Math.min(...vals), n = vals.length;
+  const X = (i) => (i / (n - 1)) * (w - 4) + 2;
+  const Y = (v) => h - 4 - ((v - min) / ((max - min) || 1)) * (h - 9);
+  const line = vals.map((v, i) => `${i ? "L" : "M"}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
+  const area = `${line} L${X(n - 1).toFixed(1)},${h} L${X(0).toFixed(1)},${h} Z`;
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none" aria-hidden="true">
+    <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(79,134,247,.5)"/><stop offset="100%" stop-color="rgba(79,134,247,0)"/></linearGradient></defs>
+    <path d="${area}" fill="url(#sg)"/>
+    <path d="${line}" fill="none" stroke="#4f86f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${X(n - 1).toFixed(1)}" cy="${Y(vals[n - 1]).toFixed(1)}" r="3" fill="#fff" stroke="#4f86f7" stroke-width="2"/>
+  </svg>`;
+}
+
+function deltaHtml(cur, prev, unit) {
+  if (!prev) return `<span class="kd flat"><small>${unit || ""}</small></span>`;
+  const pct = ((cur - prev) / prev) * 100;
+  const cls = pct > 1 ? "up" : pct < -1 ? "down" : "flat";
+  const arrow = pct > 1 ? "▲" : pct < -1 ? "▼" : "■";
+  return `<span class="kd ${cls}">${arrow} ${Math.abs(pct).toFixed(0)}% <small>MoM</small></span>`;
+}
+
+function setFresh(asOf) {
+  const node = document.getElementById("fresh");
+  if (!asOf) { node.style.display = "none"; return; }
+  const days = Math.floor((Date.now() - new Date(asOf + "T00:00:00").getTime()) / 86400000);
+  node.className = "pill " + (days <= 1 ? "fresh" : "stale");
+  node.textContent = days <= 0 ? "● fresh · updated today" : days === 1 ? "● updated yesterday" : `● ${days}d stale`;
+}
+
+function renderExecBand(d) {
+  const k = d.kpis, months = d.byMonth, curYM = nowYM();
+  const full = months.filter((m) => m.payout_month !== curYM);
+  const lastFull = full.slice(-1)[0] || months.slice(-1)[0];
+  const prevFull = full.slice(-2)[0];
+  const cards = [
+    { l: "Commission influenced", v: fmtMoney0(k.total_commission_influenced), d: `<span class="kd flat"><small>${k.months_tracked} months tracked</small></span>` },
+    { l: "Funded deals", v: k.funded_deals, d: `<span class="kd flat"><small>${(k.funded_deals / k.months_tracked).toFixed(1)} / mo</small></span>` },
+    { l: "Avg / funded deal", v: fmtMoney0(k.avg_commission_per_deal), d: `<span class="kd flat"><small>per deal</small></span>` },
+    { l: `${monLbl(lastFull.payout_month)} commission`, v: fmtK(lastFull.commission_amt), d: deltaHtml(lastFull.commission_amt, prevFull && prevFull.commission_amt) }
+  ];
+  document.getElementById("execband").replaceChildren(
+    ...cards.map((c) => el(`<div class="kc"><div class="kl">${c.l}</div><div class="kv">${c.v}</div>${c.d}</div>`)),
+    el(`<div class="kc spark"><div class="kl">Monthly trend · ${months.length} mo</div><div class="sparkwrap">${spark(months.map((m) => m.commission_amt))}</div></div>`)
+  );
+}
+
 function render(d) {
   const k = d.kpis, months = d.byMonth, bots = d.byBot;
   const curYM = nowYM();
+  renderExecBand(d);
 
   countUp(document.getElementById("hero"), k.total_commission_influenced, fmtMoney0);
   document.getElementById("herocap").innerHTML =
@@ -438,7 +532,7 @@ function render(d) {
     const warn = b.assisted_by_value === CONTAM;
     const node = el(`<div class="lrow lgrid ${warn ? "warn" : ""}">
       <div class="rank">${i + 1}</div>
-      <div class="who">${b.bot_name || b.assisted_by_value}${warn ? '<span class="tag">⚠ contaminated</span>' : ""}<small>${b.assisted_by_value}</small></div>
+      <div class="who">${b.bot_name || b.assisted_by_value}${warn ? '<span class="tag">⚠ incl. Gianna</span>' : ""}<small>${b.assisted_by_value}</small></div>
       <div class="track"><div class="bar" style="width:0"></div></div>
       <div class="amt">${fmtMoney0(b.commission_amt)}<span class="d">${b.distinct_opps} deals</span></div></div>`);
     requestAnimationFrame(() => { node.querySelector(".bar").style.width = Math.max(2, (b.commission_amt / maxB) * 100) + "%"; });
@@ -446,13 +540,16 @@ function render(d) {
   }));
   const topClean = bots.find((b) => b.assisted_by_value !== CONTAM);
   document.getElementById("callout").innerHTML =
-    `⚠ <b>Marketing&nbsp;-&nbsp;EW</b> is inflated by an Olivia hot-lead clone leftover, so it overstates Emma Wilson. Cleanest top performer: <b>${topClean.bot_name}</b> at ${fmtMoney0(topClean.commission_amt)} across ${topClean.distinct_opps} deals.`;
+    `⚠ <b>Marketing&nbsp;-&nbsp;EW</b> still includes <b>Gianna Scavina's</b> pre-fix deals (her bot wrote Emma's tag until the source was fixed 2026-06-29), so it overstates Emma until those are re-tagged. Largest clean performer: <b>${topClean.bot_name}</b> at ${fmtMoney0(topClean.commission_amt)} across ${topClean.distinct_opps} deals.`;
 
   renderReplies(d.replies, d.outcomes);
   renderScorecard(d);
   renderRecords(d.detail || []);
   if (d.asOf) document.getElementById("asof").textContent = "as of " + d.asOf;
+  setFresh(d.asOf);
 }
+
+document.getElementById("printbtn").addEventListener("click", () => window.print());
 
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -502,7 +599,7 @@ function renderRecords(detail) {
 }
 
 function scoreVerdict(r) {
-  if (r.k === "Marketing - EW") return { t: "Fix data", c: "warn", a: "Inflated by an Olivia hot-lead clone — fix at the n8n-2 source before trusting this number." };
+  if (r.k === "Marketing - EW") return { t: "Re-tag", c: "warn", a: "Source fixed 2026-06-29 — still includes Gianna's pre-fix deals. Re-tag the historical EW→GS records to split Emma from Gianna." };
   if (r.comm >= 100000) return { t: "Scale", c: "good", a: "Proven revenue driver — replicate this playbook across the other bots." };
   if (r.comm >= 10000) return { t: "Working", c: "good", a: "Producing funded deals — keep running." };
   if (r.pos >= 10) return { t: "Not converting", c: "warn", a: r.pos + " positive replies but under $10K funded — audit the handoff → funding step." };
