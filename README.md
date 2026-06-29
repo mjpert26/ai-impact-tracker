@@ -74,6 +74,9 @@ n8n/etl_ai_replies_all_bots.json             nightly GHL replies+funded ETL, all
 n8n/README.md                                ETL deploy/credential steps
 supabase/migrations/0003_replies_tier.sql    replies tables + RPC + anon views
 supabase/migrations/0004_reply_outcomes.sql  positive-reply -> won-opportunity outcomes
+supabase/migrations/0005_reply_outcomes_funded.sql  Salesforce-funded outcome on replies tier
+supabase/migrations/0006_dim_location_rollout.sql   GHL location -> bot map (9 bots)
+supabase/migrations/0007_reply_detail.sql    per-record reply detail (Records tab; PII)
 docs/plan.md                                 phased build plan
 CLAUDE.md                                    context handoff
 ```

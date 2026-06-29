@@ -1,5 +1,5 @@
 {
-  "name": "AI Impact \u2014 GHL Replies + Funded (ALL BOTS)",
+  "name": "AI Impact \u2014 GHL Replies + Funded + Detail (ALL BOTS)",
   "nodes": [
     {
       "parameters": {
@@ -18,12 +18,12 @@
         -1300,
         300
       ],
-      "id": "ee00-0001",
+      "id": "ff00-0001",
       "name": "Nightly 06:45 UTC"
     },
     {
       "parameters": {
-        "jsCode": "const BOTS=[{loc:'htgHvVfBZ1WH3UpQoxaa',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'PXyGarBjp2lwuVBdA81P',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'1lP8kn6tPERda0fT4zVT',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'XAF0RGBybE8RoesJhSiz',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'96LqPx5WmcloFPZZe1hy',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'kuO6oj3iKtz5PQUu4WZ0',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'NsDKFz05b8v0P86nTc2o',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'sEjuiURUKweddSIqjcjT',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'qT3OTNWfVeq0tNWklhMK',tok:'pit-REDACTED_PER_LOCATION_TOKEN'}];\nconst out=[];\nfor(const b of BOTS){\n  let url='https://services.leadconnectorhq.com/conversations/search?locationId='+b.loc+'&limit=100&sortBy=last_message_date&sort=desc';\n  let pages=0;\n  while(url&&pages<30){\n    let resp;\n    try{resp=await this.helpers.httpRequest({method:'GET',url,headers:{Authorization:'Bearer '+b.tok,Version:'2021-04-15'},json:true});}catch(e){break;}\n    const convs=(resp&&resp.conversations)||[];\n    for(const c of convs){if(c.lastMessageDirection!=='inbound')continue;const body=(c.lastMessageBody||'').trim();if(!body)continue;out.push({json:{location_id:b.loc,contactId:c.contactId,email:c.email||null,ts:c.lastMessageDate,body:body.slice(0,2000)}});}\n    url=(resp&&resp.meta&&resp.meta.nextPageUrl)?resp.meta.nextPageUrl:null;\n    pages++;\n  }\n}\nreturn out;"
+        "jsCode": "const BOTS=[{loc:'htgHvVfBZ1WH3UpQoxaa',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'PXyGarBjp2lwuVBdA81P',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'1lP8kn6tPERda0fT4zVT',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'XAF0RGBybE8RoesJhSiz',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'96LqPx5WmcloFPZZe1hy',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'kuO6oj3iKtz5PQUu4WZ0',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'NsDKFz05b8v0P86nTc2o',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'sEjuiURUKweddSIqjcjT',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'qT3OTNWfVeq0tNWklhMK',tok:'pit-REDACTED_PER_LOCATION_TOKEN'}];\nconst out=[];\nfor(const b of BOTS){\n  let url='https://services.leadconnectorhq.com/conversations/search?locationId='+b.loc+'&limit=100&sortBy=last_message_date&sort=desc';\n  let pages=0;\n  while(url&&pages<30){\n    let resp;\n    try{resp=await this.helpers.httpRequest({method:'GET',url,headers:{Authorization:'Bearer '+b.tok,Version:'2021-04-15'},json:true});}catch(e){break;}\n    const convs=(resp&&resp.conversations)||[];\n    for(const c of convs){if(c.lastMessageDirection!=='inbound')continue;const body=(c.lastMessageBody||'').trim();if(!body)continue;out.push({json:{location_id:b.loc,contactId:c.contactId,name:(c.fullName||c.contactName||''),email:c.email||null,ts:c.lastMessageDate,body:body.slice(0,1500)}});}\n    url=(resp&&resp.meta&&resp.meta.nextPageUrl)?resp.meta.nextPageUrl:null;pages++;\n  }\n}\nreturn out;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -31,7 +31,7 @@
         -1100,
         300
       ],
-      "id": "ee00-0002",
+      "id": "ff00-0002",
       "name": "Fetch + extract replies (all bots)"
     },
     {
@@ -51,7 +51,7 @@
         -880,
         300
       ],
-      "id": "ee00-0003",
+      "id": "ff00-0003",
       "name": "Classify (Claude Haiku)",
       "onError": "continueRegularOutput",
       "credentials": {
@@ -63,7 +63,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const meta=$('Fetch + extract replies (all bots)').all();\nconst resps=$input.all();\nfunction norm(t){t=String(t||'').toLowerCase();if(t.includes('opt'))return 'Opt-out';if(t.includes('posit'))return 'Positive';if(t.includes('negat'))return 'Negative';return 'Neutral';}\nconst replies=[];\nfor(let i=0;i<meta.length;i++){let txt='';try{txt=resps[i].json.content[0].text;}catch(e){txt='';}replies.push({location_id:meta[i].json.location_id,contactId:meta[i].json.contactId,email:meta[i].json.email,sentiment:norm(txt),ts:meta[i].json.ts});}\nreturn [{json:{replies}}];"
+        "jsCode": "const meta=$('Fetch + extract replies (all bots)').all();\nconst resps=$input.all();\nfunction norm(t){t=String(t||'').toLowerCase();if(t.includes('opt'))return 'Opt-out';if(t.includes('posit'))return 'Positive';if(t.includes('negat'))return 'Negative';return 'Neutral';}\nconst replies=[];\nfor(let i=0;i<meta.length;i++){let txt='';try{txt=resps[i].json.content[0].text;}catch(e){txt='';}const m=meta[i].json;replies.push({location_id:m.location_id,contactId:m.contactId,name:m.name,email:m.email,sentiment:norm(txt),ts:m.ts,body:m.body});}\nreturn [{json:{replies}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -71,12 +71,12 @@
         -660,
         300
       ],
-      "id": "ee00-0004",
+      "id": "ff00-0004",
       "name": "Collect classified"
     },
     {
       "parameters": {
-        "jsCode": "const BOTS=[{loc:'htgHvVfBZ1WH3UpQoxaa',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'PXyGarBjp2lwuVBdA81P',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'1lP8kn6tPERda0fT4zVT',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'XAF0RGBybE8RoesJhSiz',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'96LqPx5WmcloFPZZe1hy',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'kuO6oj3iKtz5PQUu4WZ0',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'NsDKFz05b8v0P86nTc2o',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'sEjuiURUKweddSIqjcjT',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'qT3OTNWfVeq0tNWklhMK',tok:'pit-REDACTED_PER_LOCATION_TOKEN'}];\nconst oppsWon={};\nfor(const b of BOTS){\n  oppsWon[b.loc]=[];\n  let url='https://services.leadconnectorhq.com/opportunities/search?location_id='+b.loc+'&limit=100';\n  let pages=0;\n  while(url&&pages<30){\n    let resp;\n    try{resp=await this.helpers.httpRequest({method:'GET',url,headers:{Authorization:'Bearer '+b.tok,Version:'2021-07-28'},json:true});}catch(e){break;}\n    const opps=(resp&&resp.opportunities)||[];\n    for(const o of opps){if(o.status==='won')oppsWon[b.loc].push(o.contactId);}\n    url=(resp&&resp.meta&&resp.meta.nextPageUrl)?resp.meta.nextPageUrl:null;\n    pages++;\n  }\n}\nreturn [{json:{oppsWon}}];"
+        "jsCode": "const BOTS=[{loc:'htgHvVfBZ1WH3UpQoxaa',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'PXyGarBjp2lwuVBdA81P',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'1lP8kn6tPERda0fT4zVT',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'XAF0RGBybE8RoesJhSiz',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'96LqPx5WmcloFPZZe1hy',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'kuO6oj3iKtz5PQUu4WZ0',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'NsDKFz05b8v0P86nTc2o',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'sEjuiURUKweddSIqjcjT',tok:'pit-REDACTED_PER_LOCATION_TOKEN'},{loc:'qT3OTNWfVeq0tNWklhMK',tok:'pit-REDACTED_PER_LOCATION_TOKEN'}];\nconst oppsWon={};\nfor(const b of BOTS){\n  oppsWon[b.loc]=[];\n  let url='https://services.leadconnectorhq.com/opportunities/search?location_id='+b.loc+'&limit=100';\n  let pages=0;\n  while(url&&pages<30){\n    let resp;\n    try{resp=await this.helpers.httpRequest({method:'GET',url,headers:{Authorization:'Bearer '+b.tok,Version:'2021-07-28'},json:true});}catch(e){break;}\n    const opps=(resp&&resp.opportunities)||[];\n    for(const o of opps){if(o.status==='won')oppsWon[b.loc].push(o.contactId);}\n    url=(resp&&resp.meta&&resp.meta.nextPageUrl)?resp.meta.nextPageUrl:null;pages++;\n  }\n}\nreturn [{json:{oppsWon}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -84,12 +84,12 @@
         -440,
         300
       ],
-      "id": "ee00-0005",
+      "id": "ff00-0005",
       "name": "Fetch opportunities (all bots)"
     },
     {
       "parameters": {
-        "jsCode": "const replies=$('Collect classified').first().json.replies||[];\nconst emails=[...new Set(replies.filter(r=>r.sentiment==='Positive'&&r.email&&!String(r.email).includes(\"'\")).map(r=>String(r.email).trim()))];\nconst inList=emails.length?emails.map(e=>\"'\"+e+\"'\").join(','):\"''\";\nconst soql=\"SELECT Email, ConvertedOpportunity.StageName, ConvertedOpportunity.csbs__Commission_Amount__c FROM Lead WHERE IsConverted = true AND Email IN (\"+inList+\")\";\nreturn [{json:{soql}}];"
+        "jsCode": "const replies=$('Collect classified').first().json.replies||[];\nconst emails=[...new Set(replies.filter(r=>r.email&&!String(r.email).includes(\"'\")).map(r=>String(r.email).trim()))];\nconst inList=emails.length?emails.map(e=>\"'\"+e+\"'\").join(','):\"''\";\nconst soql=\"SELECT Id, Email, ConvertedOpportunity.StageName, ConvertedOpportunity.csbs__Commission_Amount__c FROM Lead WHERE IsConverted = true AND Email IN (\"+inList+\")\";\nreturn [{json:{soql}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -97,7 +97,7 @@
         -220,
         300
       ],
-      "id": "ee00-0006",
+      "id": "ff00-0006",
       "name": "Build SF query"
     },
     {
@@ -111,7 +111,7 @@
         0,
         300
       ],
-      "id": "ee00-0007",
+      "id": "ff00-0007",
       "name": "SF funded lookup",
       "onError": "continueRegularOutput",
       "credentials": {
@@ -123,7 +123,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const replies=$('Collect classified').first().json.replies||[];\nconst oppsWon=$('Fetch opportunities (all bots)').first().json.oppsWon||{};\nconst sf=$input.all().map(i=>i.json).filter(x=>x&&x.Email);\nconst fundedByEmail={};\nfor(const row of sf){const email=String(row.Email).toLowerCase();const opp=row.ConvertedOpportunity||{};if(opp.StageName==='Funded')fundedByEmail[email]=(fundedByEmail[email]||0)+Number(opp.csbs__Commission_Amount__c||0);}\nconst byLoc={};\nfor(const r of replies){(byLoc[r.location_id]=byLoc[r.location_id]||[]).push(r);}\nconst out=[];\nfor(const loc of Object.keys(byLoc)){\n  const rs=byLoc[loc];\n  const counts={};\n  for(const r of rs){const d=new Date(Number(r.ts));const ym=d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0');counts[ym+'|'+r.sentiment]=(counts[ym+'|'+r.sentiment]||0)+1;}\n  const p_rows=Object.entries(counts).map(([k,v])=>{const a=k.split('|');return{payout_month:a[0],sentiment:a[1],reply_count:v};});\n  const won=new Set(oppsWon[loc]||[]);\n  const posReplies=rs.filter(r=>r.sentiment==='Positive');\n  const posContacts=new Set(posReplies.map(r=>r.contactId).filter(Boolean));\n  let advanced=0;for(const c of posContacts)if(won.has(c))advanced++;\n  const posEmails=[...new Set(posReplies.map(r=>(r.email||'').toLowerCase()).filter(Boolean))];\n  let positive_funded=0,funded_commission=0;\n  for(const e of posEmails)if(fundedByEmail[e]!==undefined){positive_funded++;funded_commission+=fundedByEmail[e];}\n  funded_commission=Math.round(funded_commission*100)/100;\n  out.push({json:{p_location:loc,p_rows,p_positive_replies:posContacts.size,p_positive_advanced:advanced,p_positive_funded:positive_funded,p_funded_commission:funded_commission}});\n}\nreturn out;"
+        "jsCode": "const replies=$('Collect classified').first().json.replies||[];\nconst oppsWon=$('Fetch opportunities (all bots)').first().json.oppsWon||{};\nconst sf=$input.all().map(i=>i.json).filter(x=>x&&x.Email);\nconst sfByEmail={};\nfor(const row of sf){const e=String(row.Email).toLowerCase();const opp=row.ConvertedOpportunity||{};sfByEmail[e]={leadId:row.Id||null,stage:opp.StageName||null,commission:(opp.StageName==='Funded')?Number(opp.csbs__Commission_Amount__c||0):0};}\nconst byLoc={};\nfor(const r of replies){(byLoc[r.location_id]=byLoc[r.location_id]||[]).push(r);}\nconst out=[];\nfor(const loc of Object.keys(byLoc)){\n  const rs=byLoc[loc];\n  const counts={};\n  for(const r of rs){const d=new Date(Number(r.ts));const ym=d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0');counts[ym+'|'+r.sentiment]=(counts[ym+'|'+r.sentiment]||0)+1;}\n  const p_rows=Object.entries(counts).map(([k,v])=>{const a=k.split('|');return{payout_month:a[0],sentiment:a[1],reply_count:v};});\n  const won=new Set(oppsWon[loc]||[]);\n  const posReplies=rs.filter(r=>r.sentiment==='Positive');\n  const posContacts=new Set(posReplies.map(r=>r.contactId).filter(Boolean));\n  let advanced=0;for(const c of posContacts)if(won.has(c))advanced++;\n  const posEmails=[...new Set(posReplies.map(r=>(r.email||'').toLowerCase()).filter(Boolean))];\n  let positive_funded=0,funded_commission=0;\n  for(const e of posEmails){const m=sfByEmail[e];if(m&&m.commission>0){positive_funded++;funded_commission+=m.commission;}}\n  funded_commission=Math.round(funded_commission*100)/100;\n  const seen={};const p_detail=[];\n  for(const r of rs){if(seen[r.contactId])continue;seen[r.contactId]=1;const d=new Date(Number(r.ts));const ym=d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0');const m=sfByEmail[(r.email||'').toLowerCase()]||{};p_detail.push({contact_id:r.contactId,payout_month:ym,contact_name:r.name||null,email:r.email||null,sentiment:r.sentiment,last_message:r.body||null,sf_lead_id:m.leadId||null,sf_stage:m.stage||null,funded_commission:m.commission||0,ts:Number(r.ts)});}\n  out.push({json:{p_location:loc,p_rows,p_positive_replies:posContacts.size,p_positive_advanced:advanced,p_positive_funded:positive_funded,p_funded_commission:funded_commission,p_detail}});\n}\nreturn out;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -131,7 +131,7 @@
         220,
         300
       ],
-      "id": "ee00-0008",
+      "id": "ff00-0008",
       "name": "Aggregate per bot"
     },
     {
@@ -148,10 +148,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        440,
-        200
+        460,
+        140
       ],
-      "id": "ee00-0009",
+      "id": "ff00-0009",
       "name": "Upsert sentiment",
       "credentials": {
         "httpCustomAuth": {
@@ -174,11 +174,37 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        440,
-        400
+        460,
+        300
       ],
-      "id": "ee00-0010",
+      "id": "ff00-0010",
       "name": "Upsert outcomes",
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "uB48zHhGKViNKUEe",
+          "name": "Supabase ai_impact (service_role)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rrdgghwxuincfengkjyd.supabase.co/rest/v1/rpc/refresh_ai_impact_reply_detail",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_location: $json.p_location, p_rows: $json.p_detail }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        460,
+        460
+      ],
+      "id": "ff00-0011",
+      "name": "Upsert detail",
       "credentials": {
         "httpCustomAuth": {
           "id": "uB48zHhGKViNKUEe",
@@ -275,6 +301,11 @@
           },
           {
             "node": "Upsert outcomes",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Upsert detail",
             "type": "main",
             "index": 0
           }

@@ -117,6 +117,26 @@
   .vtag.bad  { color: #f98a8a; background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.4); }
   .vtag.dim  { color: var(--dim); background: rgba(120,150,210,.08); border: 1px solid var(--line); }
   @media (max-width: 720px) { .scard { grid-template-columns: 1fr; gap: 4px; } }
+  /* records */
+  #recMonth, #recBot { background: rgba(10,17,32,.7); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; }
+  .rec { border-top: 1px solid var(--line); }
+  .rec > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 1fr 130px 90px 110px; gap: 12px; align-items: center; padding: 11px 4px; }
+  .rec > summary::-webkit-details-marker { display: none; }
+  .rec > summary:hover { background: rgba(79,134,247,.05); }
+  .rec .who { font-size: 13px; font-weight: 600; }
+  .rec .who small { display: block; color: var(--dim); font-weight: 400; font-size: 11px; }
+  .rec .botcol { color: var(--muted); font-size: 12px; }
+  .rec .sent { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; padding: 2px 8px; border-radius: 6px; justify-self: start; }
+  .sent.Positive { color: var(--emer); background: rgba(52,211,153,.12); }
+  .sent.Negative { color: var(--warn); background: rgba(245,165,36,.12); }
+  .sent.Neutral  { color: var(--blue2); background: rgba(122,167,255,.12); }
+  .sent\.Opt-out, .sent[class~="Opt-out"] { color: var(--dim); background: rgba(120,150,210,.1); }
+  .rec .sf { text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .rec .sf .funded { color: var(--emer); font-weight: 700; }
+  .rec .convo { padding: 4px 10px 16px; }
+  .rec .bubble { background: rgba(10,17,32,.6); border: 1px solid var(--line); border-left: 3px solid var(--blue); border-radius: 8px; padding: 12px 14px; font-size: 13px; color: var(--ink); white-space: pre-wrap; word-break: break-word; }
+  .rec .convometa { color: var(--dim); font-size: 11px; margin-top: 8px; }
+  @media (max-width: 720px) { .rec > summary { grid-template-columns: 1fr 70px; } .rec .botcol, .rec .sf { display: none; } }
   .callout { margin-top: 16px; border: 1px solid rgba(245,165,36,.28); background: rgba(245,165,36,.06); border-radius: 12px; padding: 11px 15px; color: #f7dca0; font-size: 12.5px; }
   .info { margin-top: 16px; border: 1px solid var(--line); background: rgba(79,134,247,.06); border-radius: 12px; padding: 11px 15px; color: var(--muted); font-size: 12.5px; }
   footer { color: var(--dim); font-size: 12px; margin-top: 26px; line-height: 1.7; }
@@ -151,6 +171,7 @@
     <button class="tab active" data-tab="scorecard">📋 Scorecard</button>
     <button class="tab" data-tab="commission">💰 Commission</button>
     <button class="tab" data-tab="replies">💬 Replies</button>
+    <button class="tab" data-tab="records">📇 Records</button>
   </div>
 
   <!-- ===================== SCORECARD ===================== -->
@@ -223,6 +244,27 @@
     </section>
   </div>
 
+  <!-- ===================== RECORDS ===================== -->
+  <div class="panel" id="panel-records">
+    <div class="hero">
+      <div class="eyebrow">Records the bots talked to</div>
+      <div id="rechero" class="big" style="font-size:clamp(30px,5.5vw,52px)">—</div>
+      <div class="cap">Each record is a contact a bot replied to, matched to Salesforce. Click any row to read their reply.</div>
+    </div>
+    <section class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        <h2 style="margin:0">Conversations by record</h2>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label class="h2sub" style="margin:0">Month</label>
+          <select id="recMonth"></select>
+          <select id="recBot"></select>
+        </div>
+      </div>
+      <div id="records"></div>
+      <div class="info" id="recInfo"></div>
+    </section>
+  </div>
+
   <footer class="reveal">
     <strong>Commission:</strong> <code>SUM(csbs__Commission_Amount__c)</code> on <code>StageName='Funded'</code> opps tagged with an in-house AI value in <code>Assisted_by__c</code> — <em>commission influenced</em>, not full attribution. <span id="footmtd"></span><br>
     <strong>Replies:</strong> GoHighLevel inbound conversations classified by Claude. Both refreshed nightly by api.btc ETLs into the Supabase <code>ai_impact</code> mart.
@@ -283,18 +325,19 @@ async function pgrest(view, q) {
   return r.json();
 }
 async function loadLive() {
-  const [k, byBot, byMonth, replies, outcomes] = await Promise.all([
+  const [k, byBot, byMonth, replies, outcomes, detail] = await Promise.all([
     pgrest("ai_kpi_summary", "select=metric,value,as_of"),
     pgrest("ai_commission_by_bot", "select=assisted_by_value,bot_name,commission_amt,distinct_opps&order=commission_amt.desc"),
     pgrest("ai_commission_by_month", "select=payout_month,commission_amt,distinct_opps&order=payout_month.asc"),
     pgrest("ai_replies_by_sentiment", "select=sentiment,reply_count").catch(() => []),
-    pgrest("ai_reply_outcomes", "select=bot_name,positive_replies,positive_advanced,advanced_pct,positive_funded,funded_pct,funded_commission&order=positive_replies.desc").catch(() => [])
+    pgrest("ai_reply_outcomes", "select=bot_name,positive_replies,positive_advanced,advanced_pct,positive_funded,funded_pct,funded_commission&order=positive_replies.desc").catch(() => []),
+    pgrest("ai_reply_detail", "select=bot_name,payout_month,contact_name,email,sentiment,last_message,sf_lead_id,sf_stage,funded_commission,msg_ts&order=msg_ts.desc&limit=2000").catch(() => [])
   ]);
   const kpis = {}; k.forEach((r) => kpis[r.metric] = Number(r.value));
   byBot.forEach((b) => { b.commission_amt = Number(b.commission_amt); b.distinct_opps = Number(b.distinct_opps); });
   byMonth.forEach((m) => { m.commission_amt = Number(m.commission_amt); m.distinct_opps = Number(m.distinct_opps); });
   (replies || []).forEach((r) => { r.reply_count = Number(r.reply_count); });
-  return { kpis, byBot, byMonth, replies: replies || [], outcomes: outcomes || [], asOf: (k[0] && k[0].as_of) || "" };
+  return { kpis, byBot, byMonth, replies: replies || [], outcomes: outcomes || [], detail: detail || [], asOf: (k[0] && k[0].as_of) || "" };
 }
 
 function countUp(node, target, fmt, ms = 1500) {
@@ -407,7 +450,55 @@ function render(d) {
 
   renderReplies(d.replies, d.outcomes);
   renderScorecard(d);
+  renderRecords(d.detail || []);
   if (d.asOf) document.getElementById("asof").textContent = "as of " + d.asOf;
+}
+
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function drawRecords() {
+  const all = window._recAll || [];
+  const m = document.getElementById("recMonth").value;
+  const b = document.getElementById("recBot").value;
+  const rows = all.filter((r) => (!m || r.payout_month === m) && (!b || r.bot_name === b));
+  document.getElementById("rechero").textContent = rows.length.toLocaleString();
+  const host = document.getElementById("records");
+  const info = document.getElementById("recInfo");
+  if (!rows.length) {
+    host.replaceChildren();
+    info.innerHTML = all.length ? "No records for this filter." : "No records yet — run the GHL replies ETL to populate this tab.";
+    return;
+  }
+  info.innerHTML = "Showing " + rows.length + " record" + (rows.length === 1 ? "" : "s") + ". Click a row to read the reply. <b>Customer PII</b> — gate this page before sharing externally.";
+  host.replaceChildren(...rows.slice(0, 500).map((r) => {
+    const funded = Number(r.funded_commission) > 0;
+    const sf = funded ? `<span class="funded">${fmtMoney0(r.funded_commission)} funded</span>` : (r.sf_stage ? esc(r.sf_stage) : (r.sf_lead_id ? "in SF" : "—"));
+    const when = r.msg_ts ? new Date(r.msg_ts).toLocaleDateString() : (r.payout_month || "");
+    return el(`<details class="rec">
+      <summary>
+        <span class="who">${esc(r.contact_name || r.email || "(unknown)")}<small>${esc(r.email || "")}</small></span>
+        <span class="botcol">${esc(r.bot_name || "")}</span>
+        <span class="sent ${r.sentiment || "Neutral"}">${esc(r.sentiment || "")}</span>
+        <span class="sf">${sf}</span>
+      </summary>
+      <div class="convo">
+        <div class="bubble">${esc(r.last_message || "(no message captured)")}</div>
+        <div class="convometa">${esc(when)}${r.sf_lead_id ? " · SF Lead " + esc(r.sf_lead_id) : ""}${r.sf_stage ? " · " + esc(r.sf_stage) : ""}</div>
+      </div>
+    </details>`);
+  }));
+}
+
+function renderRecords(detail) {
+  window._recAll = detail || [];
+  const months = [...new Set(window._recAll.map((r) => r.payout_month).filter(Boolean))].sort().reverse();
+  const bots = [...new Set(window._recAll.map((r) => r.bot_name).filter(Boolean))].sort();
+  const mSel = document.getElementById("recMonth");
+  const bSel = document.getElementById("recBot");
+  mSel.innerHTML = '<option value="">All months</option>' + months.map((m) => `<option value="${m}">${monLbl(m)}</option>`).join("");
+  bSel.innerHTML = '<option value="">All bots</option>' + bots.map((b) => `<option value="${esc(b)}">${esc(b)}</option>`).join("");
+  mSel.onchange = bSel.onchange = drawRecords;
+  drawRecords();
 }
 
 function scoreVerdict(r) {
