@@ -593,6 +593,7 @@ const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": 
 
 const _recCache = {};        // payout_month -> rows (loaded on demand)
 const _recBots = new Set();  // bot names seen so far, to build the bot filter
+const _recMonthCount = {};   // payout_month -> true record count (from the index view)
 
 function recRow(r) {
   const funded = Number(r.funded_commission) > 0;
@@ -626,18 +627,26 @@ async function drawRecords() {
   const info = document.getElementById("recInfo");
   if (!m) { host.replaceChildren(); info.textContent = "Pick a month to load its conversations."; return; }
   info.innerHTML = "Loading " + monLbl(m) + "…";
-  let rows = _recCache[m];
+  const key = m + "|" + b;
+  let rows = _recCache[key];
   if (!rows) {
-    rows = await pgrest("ai_reply_detail", `select=bot_name,payout_month,contact_name,email,sentiment,last_message,sf_lead_id,sf_stage,funded_commission,msg_ts&payout_month=eq.${m}&order=msg_ts.desc&limit=3000`).catch(() => []);
-    _recCache[m] = rows;
+    let q = `select=bot_name,payout_month,contact_name,email,sentiment,last_message,sf_lead_id,sf_stage,funded_commission,msg_ts&payout_month=eq.${m}`;
+    if (b) q += `&bot_name=eq.${encodeURIComponent(b)}`;
+    q += `&order=msg_ts.desc&limit=1000`;
+    rows = await pgrest("ai_reply_detail", q).catch(() => []);
+    _recCache[key] = rows;
     rows.forEach((r) => { if (r.bot_name) _recBots.add(r.bot_name); });
     syncBotOptions();
   }
-  const view = rows.filter((r) => !b || r.bot_name === b);
-  document.getElementById("rechero").textContent = view.length.toLocaleString();
-  if (!view.length) { host.replaceChildren(); info.innerHTML = "No records for this filter."; return; }
-  info.innerHTML = "Showing <b>" + view.length + "</b> record" + (view.length === 1 ? "" : "s") + " for <b>" + monLbl(m) + "</b>. Click a row to read the reply. <b>Customer PII</b> — gate this page before sharing externally.";
-  host.replaceChildren(...view.slice(0, 800).map(recRow));
+  const total = b ? rows.length : (_recMonthCount[m] || rows.length);
+  document.getElementById("rechero").textContent = total.toLocaleString();
+  if (!rows.length) { host.replaceChildren(); info.innerHTML = "No records for this filter."; return; }
+  const shown = Math.min(rows.length, 800);
+  const capped = total > shown;
+  info.innerHTML = "Showing <b>" + shown + "</b>" + (capped ? " of <b>" + total.toLocaleString() + "</b>" : "") +
+    " for <b>" + monLbl(m) + "</b>" + (b ? " · " + esc(b) : "") + (capped ? " — pick a bot to narrow" : "") +
+    ". Click a row to read the reply. <b>Customer PII</b> — gate before sharing externally.";
+  host.replaceChildren(...rows.slice(0, 800).map(recRow));
 }
 
 async function renderRecords() {
@@ -648,6 +657,7 @@ async function renderRecords() {
   const months = await pgrest("ai_reply_detail_months", "select=payout_month,records,funded&order=payout_month.desc").catch(() => null);
   if (!months) { info.innerHTML = "Live reply data unavailable (showing snapshot)."; document.getElementById("rechero").textContent = "—"; return; }
   if (!months.length) { info.innerHTML = "No records yet — run the GHL replies ETL / 2026 backfill to populate this tab."; document.getElementById("rechero").textContent = "0"; return; }
+  months.forEach((m) => { _recMonthCount[m.payout_month] = Number(m.records); });
   bSel.innerHTML = '<option value="">All bots</option>';
   mSel.innerHTML = months.map((m) => `<option value="${m.payout_month}">${monLbl(m.payout_month)} · ${Number(m.records).toLocaleString()} rec</option>`).join("");
   mSel.value = months[0].payout_month;
