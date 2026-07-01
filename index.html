@@ -119,7 +119,10 @@
   .vtag.dim  { color: var(--dim); background: rgba(120,150,210,.08); border: 1px solid var(--line); }
   @media (max-width: 720px) { .scard { grid-template-columns: 1fr; gap: 4px; } }
   /* records */
-  #recMonth, #recBot { background: rgba(10,17,32,.7); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; }
+  #recMonth, #recBot, #recSearch { background: rgba(10,17,32,.7); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; }
+  #recSearch { min-width: 170px; }
+  .fundedtoggle { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; cursor: pointer; user-select: none; }
+  .fundedtoggle input { accent-color: #34d399; }
   .rec { border-top: 1px solid var(--line); }
   .rec > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 1fr 130px 90px 110px; gap: 12px; align-items: center; padding: 11px 4px; }
   .rec > summary::-webkit-details-marker { display: none; }
@@ -322,10 +325,11 @@
     <section class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
         <h2 style="margin:0">Conversations by record</h2>
-        <div style="display:flex;align-items:center;gap:8px">
-          <label class="h2sub" style="margin:0">Month</label>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <input id="recSearch" type="search" placeholder="Search name or email…">
           <select id="recMonth"></select>
           <select id="recBot"></select>
+          <label class="fundedtoggle"><input type="checkbox" id="recFunded"> 💰 funded only</label>
         </div>
       </div>
       <div id="records"></div>
@@ -398,7 +402,7 @@ async function loadLive() {
     pgrest("ai_commission_by_bot", "select=assisted_by_value,bot_name,commission_amt,distinct_opps&order=commission_amt.desc"),
     pgrest("ai_commission_by_month", "select=payout_month,commission_amt,distinct_opps&order=payout_month.asc"),
     pgrest("ai_replies_by_sentiment", "select=sentiment,reply_count").catch(() => []),
-    pgrest("ai_reply_outcomes", "select=bot_name,positive_replies,positive_advanced,advanced_pct,positive_funded,funded_pct,funded_commission&order=positive_replies.desc").catch(() => [])
+    pgrest("ai_reply_outcomes", "select=bot_name,assisted_by_value,positive_replies,positive_advanced,advanced_pct,positive_funded,funded_pct,funded_commission,conversations&order=positive_replies.desc").catch(() => [])
   ]);
   const kpis = {}; k.forEach((r) => kpis[r.metric] = Number(r.value));
   byBot.forEach((b) => { b.commission_amt = Number(b.commission_amt); b.distinct_opps = Number(b.distinct_opps); });
@@ -635,30 +639,39 @@ function syncBotOptions() {
 async function drawRecords() {
   const m = document.getElementById("recMonth").value;
   const b = document.getElementById("recBot").value;
+  const f = document.getElementById("recFunded").checked;
+  const s = (document.getElementById("recSearch").value || "").trim().toLowerCase();
   const host = document.getElementById("records");
   const info = document.getElementById("recInfo");
   if (!m) { host.replaceChildren(); info.textContent = "Pick a month to load its conversations."; return; }
   info.innerHTML = "Loading " + monLbl(m) + "…";
-  const key = m + "|" + b;
+  const key = m + "|" + b + "|" + (f ? 1 : 0);
   let rows = _recCache[key];
   if (!rows) {
     let q = `select=bot_name,payout_month,contact_name,email,sentiment,last_message,sf_lead_id,sf_stage,funded_commission,msg_ts&payout_month=eq.${m}`;
     if (b) q += `&bot_name=eq.${encodeURIComponent(b)}`;
+    if (f) q += `&funded_commission=gt.0`;
     q += `&order=msg_ts.desc&limit=1000`;
     rows = await pgrest("ai_reply_detail", q).catch(() => []);
     _recCache[key] = rows;
     rows.forEach((r) => { if (r.bot_name) _recBots.add(r.bot_name); });
     syncBotOptions();
   }
-  const total = b ? rows.length : (_recMonthCount[m] || rows.length);
+  const view = s ? rows.filter((r) =>
+    String(r.contact_name || "").toLowerCase().includes(s) || String(r.email || "").toLowerCase().includes(s)) : rows;
+  const total = (s || b || f) ? view.length : (_recMonthCount[m] || rows.length);
   document.getElementById("rechero").textContent = total.toLocaleString();
-  if (!rows.length) { host.replaceChildren(); info.innerHTML = "No records for this filter."; return; }
-  const shown = Math.min(rows.length, 800);
+  if (!view.length) { host.replaceChildren(); info.innerHTML = "No records for this filter."; return; }
+  const shown = Math.min(view.length, 800);
   const capped = total > shown;
+  const bits = [monLbl(m)];
+  if (b) bits.push(esc(b));
+  if (f) bits.push("funded only");
+  if (s) bits.push("“" + esc(s) + "”");
   info.innerHTML = "Showing <b>" + shown + "</b>" + (capped ? " of <b>" + total.toLocaleString() + "</b>" : "") +
-    " for <b>" + monLbl(m) + "</b>" + (b ? " · " + esc(b) : "") + (capped ? " — pick a bot to narrow" : "") +
+    " for <b>" + bits.join(" · ") + "</b>" + (capped ? " — narrow with a bot or search" : "") +
     ". Click a row to read the reply. <b>Customer PII</b> — gate before sharing externally.";
-  host.replaceChildren(...rows.slice(0, 800).map(recRow));
+  host.replaceChildren(...view.slice(0, 800).map(recRow));
 }
 
 async function renderRecords() {
@@ -666,6 +679,8 @@ async function renderRecords() {
   const bSel = document.getElementById("recBot");
   const info = document.getElementById("recInfo");
   mSel.onchange = bSel.onchange = drawRecords;
+  document.getElementById("recFunded").onchange = drawRecords;
+  let _t; document.getElementById("recSearch").oninput = () => { clearTimeout(_t); _t = setTimeout(drawRecords, 200); };
   const months = await pgrest("ai_reply_detail_months", "select=payout_month,records,funded&order=payout_month.desc").catch(() => null);
   if (!months) { info.innerHTML = "Live reply data unavailable (showing snapshot)."; document.getElementById("rechero").textContent = "—"; return; }
   if (!months.length) { info.innerHTML = "No records yet — run the GHL replies ETL / 2026 backfill to populate this tab."; document.getElementById("rechero").textContent = "0"; return; }
@@ -778,7 +793,7 @@ function renderReplies(replies, outcomes) {
       const comm = Number(o.funded_commission) || 0;
       return el(`<div class="lrow lgrid">
         <div class="rank">${i + 1}</div>
-        <div class="who">${o.bot_name}<small>${o.positive_replies} positive replies</small></div>
+        <div class="who">${o.bot_name}<small>${Number(o.conversations || 0) > 0 ? Number(o.conversations).toLocaleString() + " convos · " : ""}${o.positive_replies} positive replies</small></div>
         <div class="track"><div class="bar" style="width:${Math.max(2, adv)}%; background:var(--emer)"></div></div>
         <div class="amt">${adv}% handoff<span class="d">${comm > 0 ? fmtK(comm) + " funded" : "—"}</span></div>
       </div>`);

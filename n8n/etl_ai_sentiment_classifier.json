@@ -55,7 +55,7 @@
         "genericAuthType": "httpCustomAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 8, system: \"Classify the customer's reply to a sales/marketing outreach into EXACTLY one word: Positive, Neutral, Negative, or Opt-out. Positive = interested, wants to proceed, asks to move forward. Negative = not interested, frustrated, declines. Opt-out = asks to stop/unsubscribe/remove or legal threat. Neutral = anything else. Output ONLY the one word.\", messages: [ { role: 'user', content: String($json.last_message).slice(0, 1500) } ] }) }}",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 8, system: \"Classify the last message of a sales conversation into EXACTLY one word: Positive, Neutral, Negative, or Opt-out. IMPORTANT: if the message is the salesperson's/bot's own outbound pitch or follow-up (not something the customer wrote), output Neutral. Positive = interested, wants to proceed, asks to move forward. Negative = not interested, frustrated, declines. Opt-out = asks to stop/unsubscribe/remove or legal threat. Neutral = anything else. Output ONLY the one word.\", messages: [ { role: 'user', content: String($json.last_message).slice(0, 1500) } ] }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
