@@ -119,7 +119,7 @@
   .vtag.dim  { color: var(--dim); background: rgba(120,150,210,.08); border: 1px solid var(--line); }
   @media (max-width: 720px) { .scard { grid-template-columns: 1fr; gap: 4px; } }
   /* records */
-  #recMonth, #recBot, #recSearch { background: rgba(10,17,32,.7); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; }
+  #recMonth, #recBot, #recSearch, #cmBot, #scMonth { background: rgba(10,17,32,.7); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; }
   #recSearch { min-width: 170px; }
   .fundedtoggle { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; cursor: pointer; user-select: none; }
   .fundedtoggle input { accent-color: #34d399; }
@@ -232,7 +232,10 @@
       <div class="funnel" id="funnel"></div>
     </section>
     <section class="card">
-      <h2>Bot scorecard</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <h2 style="margin:0">Bot scorecard</h2>
+        <select id="scMonth"><option value="">All time</option></select>
+      </div>
       <div class="h2sub">Funded revenue + reply engagement per bot, each with a recommended action. Sorted by funded commission.</div>
       <div class="lead" id="scorecard"></div>
       <div class="callout" id="scorecardnote"></div>
@@ -268,7 +271,10 @@
   <!-- ===================== COMMISSION ===================== -->
   <div class="panel" id="panel-commission">
     <div class="hero">
-      <div class="eyebrow">Commission influenced by AI</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div class="eyebrow">Commission influenced by AI</div>
+        <select id="cmBot"><option value="">All bots</option></select>
+      </div>
       <div id="hero" class="big">$0</div>
       <div class="cap" id="herocap"></div>
       <div class="chips" id="chips"></div>
@@ -384,6 +390,15 @@ const SNAPSHOT = {
     { payout_month: "2026-06", commission_amt: 162440.25, distinct_opps: 64 }
   ],
   replies: [],
+  byBotMonth: [
+    {assisted_by_value:"Marketing - EW",payout_month:"2026-01",commission_amt:15222.96,distinct_opps:6},{assisted_by_value:"Marketing - EW",payout_month:"2026-02",commission_amt:94957.14,distinct_opps:15},{assisted_by_value:"Marketing - EW",payout_month:"2026-03",commission_amt:100398.73,distinct_opps:22},{assisted_by_value:"Marketing - EW",payout_month:"2026-04",commission_amt:45481.36,distinct_opps:11},{assisted_by_value:"Marketing - EW",payout_month:"2026-05",commission_amt:39082.48,distinct_opps:14},{assisted_by_value:"Marketing - EW",payout_month:"2026-06",commission_amt:55856.76,distinct_opps:17},
+    {assisted_by_value:"Marketing - MA",payout_month:"2025-12",commission_amt:20561.36,distinct_opps:7},{assisted_by_value:"Marketing - MA",payout_month:"2026-01",commission_amt:33324.91,distinct_opps:12},{assisted_by_value:"Marketing - MA",payout_month:"2026-02",commission_amt:23855.76,distinct_opps:14},{assisted_by_value:"Marketing - MA",payout_month:"2026-03",commission_amt:70607.28,distinct_opps:18},{assisted_by_value:"Marketing - MA",payout_month:"2026-04",commission_amt:51329.65,distinct_opps:16},{assisted_by_value:"Marketing - MA",payout_month:"2026-05",commission_amt:41862,distinct_opps:26},{assisted_by_value:"Marketing - MA",payout_month:"2026-06",commission_amt:32345,distinct_opps:12},
+    {assisted_by_value:"Marketing - OC",payout_month:"2026-01",commission_amt:3908.96,distinct_opps:2},{assisted_by_value:"Marketing - OC",payout_month:"2026-02",commission_amt:33886.11,distinct_opps:16},{assisted_by_value:"Marketing - OC",payout_month:"2026-03",commission_amt:41486.96,distinct_opps:13},{assisted_by_value:"Marketing - OC",payout_month:"2026-04",commission_amt:44329.04,distinct_opps:15},{assisted_by_value:"Marketing - OC",payout_month:"2026-05",commission_amt:27471.64,distinct_opps:15},{assisted_by_value:"Marketing - OC",payout_month:"2026-06",commission_amt:69575.75,distinct_opps:28},
+    {assisted_by_value:"Inbox Manager - AI",payout_month:"2025-09",commission_amt:9406.26,distinct_opps:5},{assisted_by_value:"Inbox Manager - AI",payout_month:"2025-10",commission_amt:75382.44,distinct_opps:16},{assisted_by_value:"Inbox Manager - AI",payout_month:"2025-11",commission_amt:18206.88,distinct_opps:7},{assisted_by_value:"Inbox Manager - AI",payout_month:"2025-12",commission_amt:2290,distinct_opps:2},{assisted_by_value:"Inbox Manager - AI",payout_month:"2026-01",commission_amt:6000,distinct_opps:1},{assisted_by_value:"Inbox Manager - AI",payout_month:"2026-02",commission_amt:1028.09,distinct_opps:1},{assisted_by_value:"Inbox Manager - AI",payout_month:"2026-03",commission_amt:14576.5,distinct_opps:3},
+    {assisted_by_value:"Marketing - FT",payout_month:"2026-01",commission_amt:352.16,distinct_opps:1},{assisted_by_value:"Marketing - FT",payout_month:"2026-02",commission_amt:818.35,distinct_opps:5},{assisted_by_value:"Marketing - FT",payout_month:"2026-03",commission_amt:8612.96,distinct_opps:7},{assisted_by_value:"Marketing - FT",payout_month:"2026-04",commission_amt:6773.36,distinct_opps:10},{assisted_by_value:"Marketing - FT",payout_month:"2026-05",commission_amt:1504,distinct_opps:3},{assisted_by_value:"Marketing - FT",payout_month:"2026-06",commission_amt:5519.84,distinct_opps:7},{assisted_by_value:"Marketing - FT",payout_month:"2026-07",commission_amt:300,distinct_opps:1},
+    {assisted_by_value:"Marketing - AR",payout_month:"2026-02",commission_amt:8498,distinct_opps:1},{assisted_by_value:"Marketing - AR",payout_month:"2026-03",commission_amt:4432.16,distinct_opps:3},{assisted_by_value:"Marketing - AR",payout_month:"2026-05",commission_amt:3920,distinct_opps:3},{assisted_by_value:"Marketing - AR",payout_month:"2026-06",commission_amt:102.9,distinct_opps:1},
+    {assisted_by_value:"Marketing - JB",payout_month:"2026-03",commission_amt:566.72,distinct_opps:1}
+  ],
   funnel: { leads: 8721, meetings: 1301, funded: 355, commission: 1012574.47, median_days_to_fund: 9, within30_pct: 68 },
   asOf: "2026-07-01"
 };
@@ -409,19 +424,20 @@ async function pgrest(view, q) {
   return r.json();
 }
 async function loadLive() {
-  const [k, byBot, byMonth, replies, outcomes, roi] = await Promise.all([
+  const [k, byBot, byMonth, replies, outcomes, roi, byBotMonth] = await Promise.all([
     pgrest("ai_kpi_summary", "select=metric,value,as_of"),
     pgrest("ai_commission_by_bot", "select=assisted_by_value,bot_name,commission_amt,distinct_opps&order=commission_amt.desc"),
     pgrest("ai_commission_by_month", "select=payout_month,commission_amt,distinct_opps&order=payout_month.asc"),
     pgrest("ai_replies_by_sentiment", "select=sentiment,reply_count").catch(() => []),
     pgrest("ai_reply_outcomes", "select=bot_name,assisted_by_value,positive_replies,positive_advanced,advanced_pct,positive_funded,funded_pct,funded_commission,conversations&order=positive_replies.desc").catch(() => []),
-    pgrest("ai_roi", "select=monthly_usd,as_of,note").catch(() => [])
+    pgrest("ai_roi", "select=monthly_usd,as_of,note").catch(() => []),
+    pgrest("ai_commission_by_bot_month", "select=assisted_by_value,bot_name,payout_month,commission_amt,distinct_opps&order=payout_month.asc").catch(() => [])
   ]);
   const kpis = {}; k.forEach((r) => kpis[r.metric] = Number(r.value));
   byBot.forEach((b) => { b.commission_amt = Number(b.commission_amt); b.distinct_opps = Number(b.distinct_opps); });
   byMonth.forEach((m) => { m.commission_amt = Number(m.commission_amt); m.distinct_opps = Number(m.distinct_opps); });
   (replies || []).forEach((r) => { r.reply_count = Number(r.reply_count); });
-  return { kpis, byBot, byMonth, replies: replies || [], outcomes: outcomes || [], roi: (roi && roi[0]) || null, asOf: (k[0] && k[0].as_of) || "" };
+  return { kpis, byBot, byMonth, replies: replies || [], outcomes: outcomes || [], roi: (roi && roi[0]) || null, byBotMonth: byBotMonth || [], asOf: (k[0] && k[0].as_of) || "" };
 }
 
 function countUp(node, target, fmt, ms = 1500) {
@@ -567,16 +583,26 @@ function renderROI(d) {
     el(`<div class="chip"><div class="v">${c.v}<span class="u">${c.u}</span></div><div class="l">${c.l}</div></div>`)));
 }
 
-function render(d) {
-  const k = d.kpis, months = d.byMonth, bots = d.byBot;
+function drawCommissionTab(d, botKey) {
   const curYM = nowYM();
-  renderExecBand(d);
-  renderFunnel(d);
-  renderROI(d);
+  const bots = d.byBot;
+  let k, months, botLabel = "";
+  if (botKey) {
+    const b = bots.find((x) => x.assisted_by_value === botKey) || { commission_amt: 0, distinct_opps: 0, bot_name: botKey };
+    months = (d.byBotMonth || []).filter((m) => m.assisted_by_value === botKey)
+      .map((m) => ({ payout_month: m.payout_month, commission_amt: Number(m.commission_amt), distinct_opps: Number(m.distinct_opps) }))
+      .sort((a, z) => (a.payout_month < z.payout_month ? -1 : 1));
+    if (!months.length) months = [{ payout_month: curYM, commission_amt: Number(b.commission_amt) || 0, distinct_opps: Number(b.distinct_opps) || 0 }];
+    k = { total_commission_influenced: Number(b.commission_amt) || 0,
+          funded_deals: Number(b.distinct_opps) || 0,
+          avg_commission_per_deal: b.distinct_opps ? b.commission_amt / b.distinct_opps : 0,
+          months_tracked: months.length };
+    botLabel = b.bot_name || botKey;
+  } else { k = d.kpis; months = d.byMonth; }
 
   countUp(document.getElementById("hero"), k.total_commission_influenced, fmtMoney0);
   document.getElementById("herocap").innerHTML =
-    `Across <b>${k.funded_deals} funded deals</b> in <b>${k.months_tracked} months</b> — that's <b>${fmtMoney0(k.total_commission_influenced / k.months_tracked)}/mo</b> of revenue our in-house bots had a hand in closing.`;
+    `Across <b>${k.funded_deals} funded deals</b> in <b>${k.months_tracked} months</b> — that's <b>${fmtMoney0(k.total_commission_influenced / Math.max(1, k.months_tracked))}/mo</b> of revenue our in-house bots had a hand in closing.`;
 
   const yr = months.filter((m) => m.payout_month >= "2026-01").reduce((s, m) => s + m.commission_amt, 0);
   const peak = months.reduce((a, b) => b.commission_amt > a.commission_amt ? b : a);
@@ -600,7 +626,9 @@ function render(d) {
     el(`<div class="row"><span class="l">Months tracked</span><span class="v">${k.months_tracked}</span></div>`),
     el(`<div class="row"><span class="l">Avg commission / deal</span><span class="v">${fmtMoney0(k.avg_commission_per_deal)}</span></div>`),
     el(`<div class="row"><span class="l">Last full month</span><span class="v">${fmtK(lastFull.commission_amt)} <small>${monLbl(lastFull.payout_month)}</small></span></div>`),
-    el(`<div class="row"><span class="l">Active bots</span><span class="v">${bots.length}</span></div>`)
+    botLabel
+      ? el(`<div class="row"><span class="l">Share of all-time total</span><span class="v">${(100 * k.total_commission_influenced / d.kpis.total_commission_influenced).toFixed(1)}%</span></div>`)
+      : el(`<div class="row"><span class="l">Active bots</span><span class="v">${bots.length}</span></div>`)
   );
 
   areaChart(months);
@@ -618,6 +646,33 @@ function render(d) {
   const hasMtd = months.some((m) => m.payout_month === curYM);
   document.getElementById("monthsub").innerHTML = hasMtd ? "Hover for exact figures. <b>*</b> current month is month-to-date." : "Hover a bar for the exact figure.";
   document.getElementById("footmtd").innerHTML = hasMtd ? "The current month is month-to-date and still climbing." : "";
+  if (botLabel) document.getElementById("herocap").innerHTML =
+    `<b>${botLabel}</b> — ${k.funded_deals} funded deals across ${k.months_tracked} active month${k.months_tracked === 1 ? "" : "s"}, averaging <b>${fmtMoney0(k.avg_commission_per_deal)}</b> per deal.`;
+}
+
+function populateFilters(d) {
+  const cm = document.getElementById("cmBot");
+  if (cm && cm.options.length <= 1) {
+    (d.byBot || []).forEach((b) => cm.appendChild(el(`<option value="${esc(b.assisted_by_value)}">${esc(b.bot_name || b.assisted_by_value)}</option>`)));
+    cm.onchange = () => drawCommissionTab(window._data, cm.value);
+  }
+  const sc = document.getElementById("scMonth");
+  if (sc && sc.options.length <= 1) {
+    (d.byMonth || []).slice().reverse().forEach((m) => sc.appendChild(el(`<option value="${m.payout_month}">${monLbl(m.payout_month)}</option>`)));
+    sc.onchange = () => renderScorecard(window._data);
+  }
+}
+
+function render(d) {
+  const k = d.kpis, months = d.byMonth, bots = d.byBot;
+  const curYM = nowYM();
+  renderExecBand(d);
+  renderFunnel(d);
+  renderROI(d);
+
+  window._data = d;
+  populateFilters(d);
+  drawCommissionTab(d, (document.getElementById("cmBot") || {}).value || "");
 
   const maxB = Math.max(...bots.map((b) => b.commission_amt));
   document.getElementById("lead").replaceChildren(...bots.map((b, i) => {
@@ -737,14 +792,31 @@ function scoreVerdict(r) {
 }
 
 function renderScorecard(d) {
+  const sel = (document.getElementById("scMonth") || {}).value || "";
   const map = {};
   (d.byBot || []).forEach((b) => { map[b.assisted_by_value] = { k: b.assisted_by_value, name: b.bot_name, comm: Number(b.commission_amt) || 0, deals: Number(b.distinct_opps) || 0, pos: 0 }; });
   (d.outcomes || []).forEach((o) => { const k = o.assisted_by_value || o.bot_name; map[k] = map[k] || { k, name: o.bot_name, comm: 0, deals: 0, pos: 0 }; map[k].pos = Number(o.positive_replies) || 0; });
+  if (sel) {
+    Object.values(map).forEach((r) => {
+      const bm = (d.byBotMonth || []).find((x) => x.assisted_by_value === r.k && x.payout_month === sel);
+      r.comm = bm ? Number(bm.commission_amt) : 0;
+      r.deals = bm ? Number(bm.distinct_opps) : 0;
+    });
+  }
   const list = Object.values(map).sort((a, b) => b.comm - a.comm);
   const host = document.getElementById("scorecard");
   if (!host || !list.length) return;
+  const monthTotal = sel ? list.reduce((s, r) => s + r.comm, 0) : 0;
 
   host.replaceChildren(...list.map((r) => {
+    if (sel) {
+      const share = monthTotal > 0 ? (100 * r.comm / monthTotal) : 0;
+      return el(`<div class="scard">
+        <div class="nm">${r.name || r.k}<small>${r.k}</small></div>
+        <div class="mx"><b>${fmtMoney0(r.comm)}</b> funded in ${monLbl(sel)}<br>${r.deals} deal${r.deals === 1 ? "" : "s"}</div>
+        <div class="rec"><span class="vtag ${r.comm > 0 ? "good" : "dim"}">${r.comm > 0 ? share.toFixed(0) + "% of " + monLbl(sel) : "—"}</span><br>${r.comm > 0 ? "of " + fmtK(monthTotal) + " funded that month" : "No funded deals in " + monLbl(sel) + "."}</div>
+      </div>`);
+    }
     const v = scoreVerdict(r);
     return el(`<div class="scard">
       <div class="nm">${r.name || r.k}<small>${r.k}</small></div>
@@ -753,12 +825,20 @@ function renderScorecard(d) {
     </div>`);
   }));
 
+  if (sel) {
+    document.getElementById("shero").textContent = `${monLbl(sel)}: ${fmtK(monthTotal)}`;
+    const top = list[0];
+    document.getElementById("sherocap").innerHTML = top && top.comm > 0
+      ? `Top contributor in ${monLbl(sel)}: <b>${top.name || top.k}</b> with <b>${fmtMoney0(top.comm)}</b> (${(100 * top.comm / monthTotal).toFixed(0)}%). Verdicts are shown on the all-time view.`
+      : `No funded commission recorded for ${monLbl(sel)} yet.`;
+  } else {
   const scale = list.filter((r) => scoreVerdict(r).t === "Scale").length;
   const fix = list.filter((r) => ["Not converting", "Cut / pause"].includes(scoreVerdict(r).t)).length;
   const totalFunded = list.reduce((s, r) => s + r.comm, 0);
   document.getElementById("shero").textContent = `${scale} to scale · ${fix} to fix`;
   document.getElementById("sherocap").innerHTML =
     `<b>${scale} bots</b> are proven revenue drivers worth scaling; <b>${fix}</b> need a fix-or-cut decision. Total AI-influenced funded commission: <b>${fmtMoney0(totalFunded)}</b>.`;
+  }
   document.getElementById("scorecardnote").innerHTML =
     "“Funded” = Salesforce commission on funded deals tagged to each bot. “Positive replies” = GoHighLevel inbound classified by Claude. Verdicts are rule-based on funded $ + engagement — a starting point for the conversation, not gospel.";
 }
