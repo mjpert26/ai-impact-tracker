@@ -1,0 +1,137 @@
+{
+  "name": "AI Impact \u2014 Error Alerts (Slack)",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e0000000-0000-4000-8000-000000000001",
+      "name": "On workflow failure"
+    },
+    {
+      "parameters": {
+        "jsCode": "const e = $input.first().json;\nconst wf = (e.workflow && e.workflow.name) || 'unknown workflow';\nconst msg = (e.execution && e.execution.error && e.execution.error.message) || 'no error message';\nconst url = (e.execution && e.execution.url) || '';\nconst text = ':rotating_light: *AI Impact ETL failure* \u2014 `' + wf + '`\\n> ' + String(msg).slice(0, 400) + (url ? '\\n<' + url + '|Open execution>' : '');\nreturn [{ json: { text } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "e0000000-0000-4000-8000-000000000002",
+      "name": "Format failure"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 7 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        220
+      ],
+      "id": "e0000000-0000-4000-8000-000000000003",
+      "name": "Daily 07:30 UTC"
+    },
+    {
+      "parameters": {
+        "jsCode": "const H = { apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyZGdnaHd4dWluY2ZlbmdranlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2Mzg2NzYsImV4cCI6MjA5NzIxNDY3Nn0.CmiMS40IN__uzW8s2gt29oBfGs9Waj1Xn1voZXjpyPY' };\nH.Authorization = 'Bearer ' + H.apikey;\nconst base = 'https://rrdgghwxuincfengkjyd.supabase.co/rest/v1/';\nconst problems = [];\ntry {\n  const rec = await this.helpers.httpRequest({ url: base + 'ai_reconciliation?select=*', headers: H, json: true });\n  const r = rec && rec[0];\n  if (!r) problems.push('reconciliation view returned no rows');\n  else if (!r.reconciled) problems.push('*Reconciliation FAILED* \u2014 headline $' + r.headline_commission + ' vs months $' + r.month_sum_commission + ' vs bots $' + r.bot_sum_commission + ' (overlap $' + r.bot_overlap_amount + ')');\n} catch (err) { problems.push('could not read ai_reconciliation: ' + err.message); }\ntry {\n  const k = await this.helpers.httpRequest({ url: base + 'ai_kpi_summary?select=as_of&limit=1', headers: H, json: true });\n  const asOf = k && k[0] && k[0].as_of;\n  const today = new Date().toISOString().slice(0, 10);\n  if (!asOf) problems.push('kpi_summary is empty');\n  else if (asOf < today) problems.push('*Mart is STALE* \u2014 last refresh ' + asOf + ' (commission ETL may have silently not run)');\n} catch (err) { problems.push('could not read ai_kpi_summary: ' + err.message); }\nif (!problems.length) return [];\nreturn [{ json: { text: ':warning: *AI Impact daily health check*\\n\u2022 ' + problems.join('\\n\u2022 ') } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        220
+      ],
+      "id": "e0000000-0000-4000-8000-000000000004",
+      "name": "Daily health check"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#ai-impact-alerts"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        460,
+        110
+      ],
+      "id": "e0000000-0000-4000-8000-000000000005",
+      "name": "Slack alert",
+      "credentials": {
+        "slackApi": {
+          "id": "REPLACE_WITH_CHATBTC_CRED_ID",
+          "name": "ChatBTC"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "On workflow failure": {
+      "main": [
+        [
+          {
+            "node": "Format failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format failure": {
+      "main": [
+        [
+          {
+            "node": "Slack alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 07:30 UTC": {
+      "main": [
+        [
+          {
+            "node": "Daily health check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily health check": {
+      "main": [
+        [
+          {
+            "node": "Slack alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
