@@ -240,8 +240,10 @@
           <b>Attribution = last milestone-writer.</b> Bots overwrite <code>Assisted_by__c</code> with a single value, so a
           deal is credited to the <b>last</b> bot that worked it. Per-bot figures sum <b>exactly</b> to the headline
           (verified — no double-counting).<br><br>
-          <b>Known caveat.</b> <code>Marketing - EW</code> still contains Gianna Scavina's pre-fix deals (her bot wrote
-          Emma's tag until 2026-06-29); historical re-tag pending. All other bots are clean.<br><br>
+          <b>Known caveat (resolved).</b> A misconfigured bot briefly wrote <code>Marketing - EW</code> (Emma's tag)
+          on its own leads; fixed at source 2026-06-29. Sizing the residual: that bot's sub-account shows ~41 total
+          conversations with zero funded matches, so the impact on Emma's figure is immaterial. Every active bot now
+          writes its own tag (verified in a full live-path audit of the production instance).<br><br>
           <b>Refresh.</b> Salesforce commission + GoHighLevel replies are pulled nightly into the Supabase
           <code>ai_impact</code> mart; this dashboard reads it live with a baked snapshot as fallback.
         </div>
@@ -339,7 +341,7 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const SNAPSHOT = {
   kpis: { total_commission_influenced: 1012574.47, funded_deals: 355, avg_commission_per_deal: 2852.32, months_tracked: 10 },
   byBot: [
-    { assisted_by_value: "Marketing - EW", bot_name: "Emma Wilson (incl. Gianna pre-fix)", commission_amt: 350999.43, distinct_opps: 85 },
+    { assisted_by_value: "Marketing - EW", bot_name: "Emma Wilson", commission_amt: 350999.43, distinct_opps: 85 },
     { assisted_by_value: "Marketing - MA", bot_name: "Megan Anderson", commission_amt: 273885.96, distinct_opps: 105 },
     { assisted_by_value: "Marketing - OC", bot_name: "Olivia", commission_amt: 219698.46, distinct_opps: 88 },
     { assisted_by_value: "Inbox Manager - AI", bot_name: "Inbox Manager (aggregate)", commission_amt: 126890.17, distinct_opps: 35 },
@@ -364,11 +366,10 @@ const SNAPSHOT = {
   asOf: "2026-07-01"
 };
 
-const CONTAM = "Marketing - EW";
 const fmtMoney0 = (n) => "$" + Math.round(n).toLocaleString("en-US");
 const fmtK = (n) => n >= 1000 ? "$" + (n / 1000).toFixed(n >= 100000 ? 0 : 1) + "K" : "$" + Math.round(n);
 const fmtM = (n) => n >= 1e6 ? "$" + (n / 1e6).toFixed(2) + "M" : fmtK(n);
-const monLbl = (ym) => { const [y, m] = ym.split("-"); return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+m - 1] + " " + y.slice(2); };
+const monLbl = (ym) => { const [y, m] = ym.split("-"); return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+m - 1] + " '" + y.slice(2); };
 const monShort = (ym) => ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+ym.split("-")[1] - 1];
 const el = (h) => { const t = document.createElement("template"); t.innerHTML = h.trim(); return t.content.firstChild; };
 const nowYM = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
@@ -573,18 +574,17 @@ function render(d) {
 
   const maxB = Math.max(...bots.map((b) => b.commission_amt));
   document.getElementById("lead").replaceChildren(...bots.map((b, i) => {
-    const warn = b.assisted_by_value === CONTAM;
-    const node = el(`<div class="lrow lgrid ${warn ? "warn" : ""}">
+    const node = el(`<div class="lrow lgrid">
       <div class="rank">${i + 1}</div>
-      <div class="who">${b.bot_name || b.assisted_by_value}${warn ? '<span class="tag">⚠ incl. Gianna</span>' : ""}<small>${b.assisted_by_value}</small></div>
+      <div class="who">${b.bot_name || b.assisted_by_value}<small>${b.assisted_by_value}</small></div>
       <div class="track"><div class="bar" style="width:0"></div></div>
       <div class="amt">${fmtMoney0(b.commission_amt)}<span class="d">${b.distinct_opps} deals</span></div></div>`);
     requestAnimationFrame(() => { node.querySelector(".bar").style.width = Math.max(2, (b.commission_amt / maxB) * 100) + "%"; });
     return node;
   }));
-  const topClean = bots.find((b) => b.assisted_by_value !== CONTAM);
+  const top = bots[0];
   document.getElementById("callout").innerHTML =
-    `⚠ <b>Marketing&nbsp;-&nbsp;EW</b> still includes <b>Gianna Scavina's</b> pre-fix deals (her bot wrote Emma's tag until the source was fixed 2026-06-29), so it overstates Emma until those are re-tagged. Largest clean performer: <b>${topClean.bot_name}</b> at ${fmtMoney0(topClean.commission_amt)} across ${topClean.distinct_opps} deals.`;
+    `🏆 Top performer: <b>${top.bot_name}</b> at ${fmtMoney0(top.commission_amt)} across ${top.distinct_opps} deals. A since-fixed tagging bug (corrected 2026-06-29) briefly credited another bot's leads to Marketing&nbsp;-&nbsp;EW; measured residual impact is immaterial — see Methodology.`;
 
   renderReplies(d.replies, d.outcomes);
   renderScorecard(d);
@@ -671,7 +671,6 @@ async function renderRecords() {
 }
 
 function scoreVerdict(r) {
-  if (r.k === "Marketing - EW") return { t: "Re-tag", c: "warn", a: "Source fixed 2026-06-29 — still includes Gianna's pre-fix deals. Re-tag the historical EW→GS records to split Emma from Gianna." };
   if (r.comm >= 100000) return { t: "Scale", c: "good", a: "Proven revenue driver — replicate this playbook across the other bots." };
   if (r.comm >= 10000) return { t: "Working", c: "good", a: "Producing funded deals — keep running." };
   if (r.pos >= 10) return { t: "Not converting", c: "warn", a: r.pos + " positive replies but under $10K funded — audit the handoff → funding step." };
@@ -689,9 +688,8 @@ function renderScorecard(d) {
 
   host.replaceChildren(...list.map((r) => {
     const v = scoreVerdict(r);
-    const warn = r.k === "Marketing - EW";
     return el(`<div class="scard">
-      <div class="nm">${r.name || r.k}${warn ? ' <span class="tag">⚠</span>' : ""}<small>${r.k}</small></div>
+      <div class="nm">${r.name || r.k}<small>${r.k}</small></div>
       <div class="mx"><b>${fmtMoney0(r.comm)}</b> funded<br>${r.deals} deals · ${r.pos} pos. replies</div>
       <div class="rec"><span class="vtag ${v.c}">${v.t}</span><br>${v.a}</div>
     </div>`);

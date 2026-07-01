@@ -1,0 +1,166 @@
+{
+  "name": "AI Impact \u2014 Sentiment Classifier (hourly until backlog clear)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "20 * * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "aaaa1111-0000-4000-8000-000000000001",
+      "name": "Hourly at :20"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rrdgghwxuincfengkjyd.supabase.co/rest/v1/rpc/get_unclassified_replies",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_limit: 800 }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        220,
+        0
+      ],
+      "id": "aaaa1111-0000-4000-8000-000000000002",
+      "name": "Fetch unclassified batch",
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "uB48zHhGKViNKUEe",
+          "name": "Supabase ai_impact (service_role)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 8, system: \"Classify the customer's reply to a sales/marketing outreach into EXACTLY one word: Positive, Neutral, Negative, or Opt-out. Positive = interested, wants to proceed, asks to move forward. Negative = not interested, frustrated, declines. Opt-out = asks to stop/unsubscribe/remove or legal threat. Neutral = anything else. Output ONLY the one word.\", messages: [ { role: 'user', content: String($json.last_message).slice(0, 1500) } ] }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        440,
+        0
+      ],
+      "id": "aaaa1111-0000-4000-8000-000000000003",
+      "name": "Classify (Claude Haiku)",
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "tkrE610QOjpv1yIn",
+          "name": "Anthropic (AI Impact)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const meta=$('Fetch unclassified batch').all();\nconst resps=$input.all();\nfunction norm(t){t=String(t||'').toLowerCase();if(t.includes('opt'))return 'Opt-out';if(t.includes('posit'))return 'Positive';if(t.includes('negat'))return 'Negative';return 'Neutral';}\nconst rows=[];\nfor(let i=0;i<meta.length;i++){\n  let txt='';\n  try{txt=resps[i].json.content[0].text;}catch(e){continue;}\n  if(!txt)continue;\n  rows.push({location_id:meta[i].json.location_id,contact_id:meta[i].json.contact_id,sentiment:norm(txt)});\n}\nreturn [{json:{p_rows:rows,classified:rows.length}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ],
+      "id": "aaaa1111-0000-4000-8000-000000000004",
+      "name": "Collect sentiments"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rrdgghwxuincfengkjyd.supabase.co/rest/v1/rpc/set_reply_sentiments",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_rows: $json.p_rows }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        880,
+        0
+      ],
+      "id": "aaaa1111-0000-4000-8000-000000000005",
+      "name": "Save sentiments",
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "uB48zHhGKViNKUEe",
+          "name": "Supabase ai_impact (service_role)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Hourly at :20": {
+      "main": [
+        [
+          {
+            "node": "Fetch unclassified batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch unclassified batch": {
+      "main": [
+        [
+          {
+            "node": "Classify (Claude Haiku)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify (Claude Haiku)": {
+      "main": [
+        [
+          {
+            "node": "Collect sentiments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect sentiments": {
+      "main": [
+        [
+          {
+            "node": "Save sentiments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
