@@ -336,13 +336,13 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 // Baked snapshot (validated 2026-06-29) — fallback if the live read is unavailable.
 const SNAPSHOT = {
-  kpis: { total_commission_influenced: 995691.47, funded_deals: 349, avg_commission_per_deal: 2852.98, months_tracked: 10 },
+  kpis: { total_commission_influenced: 1012574.47, funded_deals: 355, avg_commission_per_deal: 2852.32, months_tracked: 10 },
   byBot: [
-    { assisted_by_value: "Marketing - EW", bot_name: "Emma Wilson (incl. Gianna pre-fix)", commission_amt: 346691.43, distinct_opps: 83 },
+    { assisted_by_value: "Marketing - EW", bot_name: "Emma Wilson (incl. Gianna pre-fix)", commission_amt: 350999.43, distinct_opps: 85 },
     { assisted_by_value: "Marketing - MA", bot_name: "Megan Anderson", commission_amt: 273885.96, distinct_opps: 105 },
-    { assisted_by_value: "Marketing - OC", bot_name: "Olivia", commission_amt: 208173.46, distinct_opps: 85 },
+    { assisted_by_value: "Marketing - OC", bot_name: "Olivia", commission_amt: 219698.46, distinct_opps: 88 },
     { assisted_by_value: "Inbox Manager - AI", bot_name: "Inbox Manager (aggregate)", commission_amt: 126890.17, distinct_opps: 35 },
-    { assisted_by_value: "Marketing - FT", bot_name: "Faith Thompson", commission_amt: 22530.67, distinct_opps: 32 },
+    { assisted_by_value: "Marketing - FT", bot_name: "Faith Thompson", commission_amt: 23580.67, distinct_opps: 33 },
     { assisted_by_value: "Marketing - AR", bot_name: "Anne Robinson", commission_amt: 16953.06, distinct_opps: 8 },
     { assisted_by_value: "Marketing - JB", bot_name: "Jasmine Bennett", commission_amt: 566.72, distinct_opps: 1 }
   ],
@@ -356,11 +356,11 @@ const SNAPSHOT = {
     { payout_month: "2026-03", commission_amt: 240681.31, distinct_opps: 67 },
     { payout_month: "2026-04", commission_amt: 147913.41, distinct_opps: 52 },
     { payout_month: "2026-05", commission_amt: 113840.12, distinct_opps: 61 },
-    { payout_month: "2026-06", commission_amt: 145557.25, distinct_opps: 58 }
+    { payout_month: "2026-06", commission_amt: 162440.25, distinct_opps: 64 }
   ],
   replies: [],
-  funnel: { leads: 8721, meetings: 1301, funded: 349, commission: 995691.47 },
-  asOf: "2026-06-29"
+  funnel: { leads: 8721, meetings: 1301, funded: 355, commission: 1012574.47, median_days_to_fund: 9, within30_pct: 68 },
+  asOf: "2026-07-01"
 };
 
 const CONTAM = "Marketing - EW";
@@ -512,6 +512,11 @@ function renderFunnel(d) {
       <div class="frow"><span class="fl">Commission influenced</span><span class="fv" style="color:var(--emer)">${fmtMoney0(f.commission)}</span></div>
       <div class="fc">~${fmtMoney0(f.commission / f.meetings)} per meeting booked · ~${fmtMoney0(f.commission / f.funded)} per funded deal</div></div>`)
   );
+  if (f.median_days_to_fund) {
+    document.getElementById("funnel").appendChild(
+      el(`<div class="fc" style="margin-top:10px;color:var(--muted)">⚡ <b>Speed:</b> AI-touched deals fund in a <b>median of ${f.median_days_to_fund} days</b> — ${f.within30_pct}% within 30 days.</div>`)
+    );
+  }
 }
 
 function render(d) {
