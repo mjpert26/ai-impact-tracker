@@ -237,6 +237,12 @@
           opportunities that (a) reached <code>StageName = Funded</code> and (b) carry an in-house AI bot value in the
           multi-select <code>Assisted_by__c</code> field. It is <b>influence, not sole credit</b> — a bot touched the deal;
           humans closed it.<br><br>
+          <b>Scope — in-house AI bots only.</b> This dashboard counts <b>only</b> BTC's in-house bots (Emma, Megan, Olivia,
+          Faith, Anne, Jasmine, Gianna, Lauren, Inbox Manager). It deliberately <b>excludes</b> vendor/tool assists
+          (Apten, Instantly, TextUs), the generic "Marketing" tag, call-center and human rep assists — so an
+          "all Assisted-by values" Salesforce report will show a larger total. That's a scope difference, not a data
+          discrepancy: for the shared bot values the two match within filter semantics (this dashboard uses
+          <code>INCLUDES</code>, which correctly counts deals carrying multiple tags; "equals" filters drop them).<br><br>
           <b>Attribution = last milestone-writer.</b> Bots overwrite <code>Assisted_by__c</code> with a single value, so a
           deal is credited to the <b>last</b> bot that worked it. Per-bot figures sum <b>exactly</b> to the headline
           (verified — no double-counting).<br><br>
