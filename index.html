@@ -177,6 +177,11 @@
   .fstage .fl { font-weight: 700; font-size: 14px; }
   .fstage .fv { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 16px; }
   .fstage .fc { position: relative; color: var(--dim); font-size: 11.5px; margin-top: 2px; }
+  /* ROI */
+  .roibig { font-size: clamp(28px, 4.5vw, 46px); font-weight: 800; letter-spacing: -1px; line-height: 1.1;
+    background: linear-gradient(120deg, #fff 5%, var(--gold) 55%, var(--emer) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #roiCard { border-color: rgba(240,177,58,.35); }
   @media print {
     body { background: #fff; color: #000; }
     .tabs, .pill.btn, .badges { display: none !important; }
@@ -268,6 +273,13 @@
       <div class="cap" id="herocap"></div>
       <div class="chips" id="chips"></div>
     </div>
+
+    <section class="card" id="roiCard" style="display:none">
+      <h2>Return on AI investment</h2>
+      <div class="h2sub" id="roiSub"></div>
+      <div class="roibig" id="roiBig" style="margin:10px 0 4px"></div>
+      <div class="chips" id="roiChips" style="margin-top:10px"></div>
+    </section>
 
     <div class="grid">
       <section class="card">
@@ -397,18 +409,19 @@ async function pgrest(view, q) {
   return r.json();
 }
 async function loadLive() {
-  const [k, byBot, byMonth, replies, outcomes] = await Promise.all([
+  const [k, byBot, byMonth, replies, outcomes, roi] = await Promise.all([
     pgrest("ai_kpi_summary", "select=metric,value,as_of"),
     pgrest("ai_commission_by_bot", "select=assisted_by_value,bot_name,commission_amt,distinct_opps&order=commission_amt.desc"),
     pgrest("ai_commission_by_month", "select=payout_month,commission_amt,distinct_opps&order=payout_month.asc"),
     pgrest("ai_replies_by_sentiment", "select=sentiment,reply_count").catch(() => []),
-    pgrest("ai_reply_outcomes", "select=bot_name,assisted_by_value,positive_replies,positive_advanced,advanced_pct,positive_funded,funded_pct,funded_commission,conversations&order=positive_replies.desc").catch(() => [])
+    pgrest("ai_reply_outcomes", "select=bot_name,assisted_by_value,positive_replies,positive_advanced,advanced_pct,positive_funded,funded_pct,funded_commission,conversations&order=positive_replies.desc").catch(() => []),
+    pgrest("ai_roi", "select=monthly_usd,as_of,note").catch(() => [])
   ]);
   const kpis = {}; k.forEach((r) => kpis[r.metric] = Number(r.value));
   byBot.forEach((b) => { b.commission_amt = Number(b.commission_amt); b.distinct_opps = Number(b.distinct_opps); });
   byMonth.forEach((m) => { m.commission_amt = Number(m.commission_amt); m.distinct_opps = Number(m.distinct_opps); });
   (replies || []).forEach((r) => { r.reply_count = Number(r.reply_count); });
-  return { kpis, byBot, byMonth, replies: replies || [], outcomes: outcomes || [], asOf: (k[0] && k[0].as_of) || "" };
+  return { kpis, byBot, byMonth, replies: replies || [], outcomes: outcomes || [], roi: (roi && roi[0]) || null, asOf: (k[0] && k[0].as_of) || "" };
 }
 
 function countUp(node, target, fmt, ms = 1500) {
@@ -531,11 +544,35 @@ function renderFunnel(d) {
   }
 }
 
+function renderROI(d) {
+  const card = document.getElementById("roiCard");
+  const roi = d.roi, k = d.kpis;
+  const cost = roi && Number(roi.monthly_usd);
+  if (!cost || cost <= 0) { card.style.display = "none"; return; }
+  const monthlyComm = k.total_commission_influenced / k.months_tracked;
+  const mult = monthlyComm / cost;
+  const dealsPerMo = k.funded_deals / k.months_tracked;
+  const costPerDeal = cost / dealsPerMo;
+  card.style.display = "";
+  document.getElementById("roiBig").textContent = mult.toFixed(mult >= 20 ? 0 : 1) + "× return on AI spend";
+  document.getElementById("roiSub").textContent =
+    `Program cost ~${fmtMoney0(cost)}/mo${roi.note ? " (" + roi.note + ")" : ""} vs ${fmtMoney0(monthlyComm)}/mo commission influenced${roi.as_of ? " · cost as of " + roi.as_of : ""}.`;
+  const chips = [
+    { v: fmtMoney0(cost), u: "/mo", l: "AI program cost" },
+    { v: "$" + mult.toFixed(0), u: "", l: "Influenced per $1 of AI spend" },
+    { v: fmtMoney0(costPerDeal), u: "", l: "AI cost per funded deal" },
+    { v: fmtK(cost * 12), u: "/yr", l: "Annualized cost vs " + fmtM((k.total_commission_influenced / k.months_tracked) * 12) + " influenced" }
+  ];
+  document.getElementById("roiChips").replaceChildren(...chips.map((c) =>
+    el(`<div class="chip"><div class="v">${c.v}<span class="u">${c.u}</span></div><div class="l">${c.l}</div></div>`)));
+}
+
 function render(d) {
   const k = d.kpis, months = d.byMonth, bots = d.byBot;
   const curYM = nowYM();
   renderExecBand(d);
   renderFunnel(d);
+  renderROI(d);
 
   countUp(document.getElementById("hero"), k.total_commission_influenced, fmtMoney0);
   document.getElementById("herocap").innerHTML =
