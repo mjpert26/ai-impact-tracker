@@ -366,6 +366,15 @@
 const SUPABASE_URL  = "https://rrdgghwxuincfengkjyd.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyZGdnaHd4dWluY2ZlbmdranlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2Mzg2NzYsImV4cCI6MjA5NzIxNDY3Nn0.CmiMS40IN__uzW8s2gt29oBfGs9Waj1Xn1voZXjpyPY";
 
+// Salesforce Canvas token (minted by /api/canvas-auth, arrives as #sbt=...).
+// Falls back to the public anon key when absent.
+const AUTH_TOKEN = (() => {
+  try {
+    const m = location.hash.match(/sbt=([^&]+)/);
+    if (m) { sessionStorage.setItem("sbt", m[1]); history.replaceState(null, "", location.pathname + location.search); }
+    return sessionStorage.getItem("sbt") || "";
+  } catch (e) { return ""; }
+})();
 // Baked snapshot (validated 2026-06-29) — fallback if the live read is unavailable.
 const SNAPSHOT = {
   kpis: { total_commission_influenced: 1012574.47, funded_deals: 355, avg_commission_per_deal: 2852.32, months_tracked: 10 },
@@ -420,7 +429,7 @@ document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () 
 }));
 
 async function pgrest(view, q) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${view}?${q}`, { headers: { apikey: SUPABASE_ANON, Authorization: "Bearer " + SUPABASE_ANON } });
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${view}?${q}`, { headers: { apikey: SUPABASE_ANON, Authorization: "Bearer " + (AUTH_TOKEN || SUPABASE_ANON) } });
   if (!r.ok) throw new Error(view + " " + r.status);
   return r.json();
 }
@@ -899,7 +908,7 @@ function renderReplies(replies, outcomes) {
   }));
   let line = "";
   if (advPct !== null) line += `🤝 <b>${advPct}% of positive replies were handed off to a funding manager</b> (${oc.adv} of ${oc.pos}). `;
-  if (oc.fund > 0) line += `💰 <b>${fundPct}% funded</b>, worth <b>${fmtMoney0(oc.comm)}</b> in commission (Salesforce). `;
+  if (oc.fund > 0) line += `💰 <b>${fundPct}% funded</b>${oc.comm > 0 ? `, worth <b>${fmtMoney0(oc.comm)}</b> in commission (Salesforce)` : ""}. `;
   info.innerHTML = line + `Live across <b>${(outcomes || []).length} bot sub-accounts</b> via GoHighLevel, refreshed nightly.`;
 
   // per-bot leaderboard
@@ -925,12 +934,42 @@ function setMode(kind) {
   else { m.textContent = "snapshot"; m.className = "pill snap"; }
 }
 
+function renderOps(d) {
+  // operational view: engagement + records, no $ (commission views return nothing for ops tokens)
+  const hide = (n) => { if (n) n.style.display = "none"; };
+  hide(document.getElementById("execband"));
+  hide(document.getElementById("roiCard"));
+  document.querySelectorAll('.tab[data-tab="scorecard"], .tab[data-tab="commission"]').forEach(hide);
+  document.getElementById("panel-scorecard").classList.remove("active");
+  document.getElementById("panel-commission").classList.remove("active");
+  document.querySelector('.tab[data-tab="replies"]').classList.add("active");
+  document.getElementById("panel-replies").classList.add("active");
+  renderReplies(d.replies, d.outcomes);
+  renderRecords();
+  if (d.asOf) document.getElementById("asof").textContent = "as of " + d.asOf;
+  setFresh(d.asOf);
+}
+
+function showLocked() {
+  document.querySelector(".wrap").innerHTML =
+    '<div style="max-width:520px;margin:18vh auto;text-align:center">' +
+    '<h1 style="font-size:22px;margin-bottom:10px">AI Bot Impact Tracker</h1>' +
+    '<p style="color:var(--muted);line-height:1.7">This dashboard is available inside Salesforce.<br>Open the <b>AI Impact</b> tab in Salesforce to view it.</p></div>';
+}
+
 (async function () {
   if (SUPABASE_URL && SUPABASE_ANON) {
-    try { render(await loadLive()); setMode("live"); return; }
-    catch (e) { console.warn("Live read failed, using snapshot:", e); }
+    try {
+      const d = await loadLive();
+      if (!Object.keys(d.kpis).length) {
+        if (AUTH_TOKEN) { renderOps(d); setMode("live"); return; }
+        throw new Error("no kpi rows for anon");
+      }
+      render(d); setMode("live"); return;
+    } catch (e) { console.warn("Live read failed:", e); }
   }
-  render(SNAPSHOT); setMode("snapshot");
+  if (Number(SNAPSHOT.kpis.total_commission_influenced) > 0) { render(SNAPSHOT); setMode("snapshot"); }
+  else { showLocked(); }
 })();
 </script>
 </body>
