@@ -11,13 +11,38 @@
 //                               "00e...profileId":"exec", "*":"ops"}
 const crypto = require('crypto');
 
+const diagPage = (title, items) => `<!doctype html><html><body style="font-family:system-ui;background:#0b1322;color:#dbe4f5;padding:40px;line-height:1.7">
+<h2 style="color:#f0b13a">⚠ ${title}</h2>
+<p>Salesforce reached this endpoint, but not with a signed Canvas request. Most likely fix, in order:</p>
+<ol>${items.map((i) => '<li>' + i + '</li>').join('')}</ol>
+<p style="color:#7e8db0;font-size:13px">This page is the AI Impact Canvas auth bridge (/api/canvas-auth).</p>
+</body></html>`;
+
 module.exports = async (req, res) => {
   try {
-    if (req.method !== 'POST') { res.status(405).send('POST only'); return; }
+    if (req.method !== 'POST') {
+      // Salesforce falls back to an OAuth GET when the user isn't pre-authorized
+      // for the Connected App — surface that instead of a bare 405.
+      res.status(200).setHeader('Content-Type', 'text/html');
+      res.send(diagPage('Canvas opened with GET — user not pre-authorized?', [
+        '<b>Connected App → Manage → Edit Policies → Permitted Users = “Admin approved users are pre-authorized”</b>, Save.',
+        'Same Manage page → scroll to <b>Profiles → Manage Profiles</b> → add this user’s profile (e.g. System Administrator).',
+        'Wait ~5 minutes for propagation, then reload the AI Impact tab.',
+        'Still here? Confirm Canvas <b>Access Method = Signed Request (POST)</b> on the Connected App.'
+      ]));
+      return;
+    }
     let body = req.body;
     if (typeof body === 'string') body = Object.fromEntries(new URLSearchParams(body));
     const signed = body && body.signed_request;
-    if (!signed) { res.status(400).send('missing signed_request'); return; }
+    if (!signed) {
+      res.status(200).setHeader('Content-Type', 'text/html');
+      res.send(diagPage('POST received but no signed_request', [
+        'Confirm Canvas <b>Access Method = Signed Request (POST)</b> (not OAuth Webflow).',
+        'Confirm the Canvas App URL points at /api/canvas-auth.'
+      ]));
+      return;
+    }
 
     const secret = process.env.SF_CONSUMER_SECRET;
     const jwtSecret = process.env.SUPABASE_JWT_SECRET;
