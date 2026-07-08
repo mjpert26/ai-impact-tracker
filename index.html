@@ -178,6 +178,14 @@
   .fstage .fl { font-weight: 700; font-size: 14px; }
   .fstage .fv { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 16px; }
   .fstage .fc { position: relative; color: var(--dim); font-size: 11.5px; margin-top: 2px; }
+  /* insights */
+  .ins { border: 1px solid var(--line); border-left-width: 3px; border-radius: 10px; padding: 11px 14px; margin: 8px 0; background: rgba(10,17,32,.45); }
+  .ins .it { font-weight: 700; font-size: 13.5px; }
+  .ins .ib { color: var(--muted); font-size: 12.5px; margin-top: 2px; line-height: 1.55; }
+  .ins.warning { border-left-color: var(--warn); }
+  .ins.opportunity { border-left-color: var(--blue); }
+  .ins.win { border-left-color: var(--emer); }
+  .insgrp { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; margin: 14px 0 4px; font-weight: 700; }
   /* ROI */
   .roibig { font-size: clamp(28px, 4.5vw, 46px); font-weight: 800; letter-spacing: -1px; line-height: 1.1;
     background: linear-gradient(120deg, #fff 5%, var(--gold) 55%, var(--emer) 100%);
@@ -231,6 +239,12 @@
       <h2>AI pipeline funnel</h2>
       <div class="h2sub">From leads worked to commission influenced — the full top-of-funnel engine.</div>
       <div class="funnel" id="funnel"></div>
+    </section>
+    <section class="card" id="insightsCard" style="display:none">
+      <h2>💡 Insights &amp; recommendations</h2>
+      <div class="h2sub">What to double down on, what to fix — from the AI analyst and live signals in the data.</div>
+      <div id="insightsAI"></div>
+      <div id="insightsSignals"></div>
     </section>
     <section class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
@@ -434,20 +448,21 @@ async function pgrest(view, q) {
   return r.json();
 }
 async function loadLive() {
-  const [k, byBot, byMonth, replies, outcomes, roi, byBotMonth] = await Promise.all([
+  const [k, byBot, byMonth, replies, outcomes, roi, insights, byBotMonth] = await Promise.all([
     pgrest("ai_kpi_summary", "select=metric,value,as_of"),
     pgrest("ai_commission_by_bot", "select=assisted_by_value,bot_name,commission_amt,distinct_opps&order=commission_amt.desc"),
     pgrest("ai_commission_by_month", "select=payout_month,commission_amt,distinct_opps&order=payout_month.asc"),
     pgrest("ai_replies_by_sentiment", "select=sentiment,reply_count").catch(() => []),
     pgrest("ai_reply_outcomes", "select=bot_name,assisted_by_value,positive_replies,positive_advanced,advanced_pct,positive_funded,funded_pct,funded_commission,conversations&order=positive_replies.desc").catch(() => []),
     pgrest("ai_roi", "select=monthly_usd,as_of,note").catch(() => []),
+    pgrest("ai_insights", "select=severity,title,body,generated_at").catch(() => []),
     pgrest("ai_commission_by_bot_month", "select=assisted_by_value,bot_name,payout_month,commission_amt,distinct_opps&order=payout_month.asc").catch(() => [])
   ]);
   const kpis = {}; k.forEach((r) => kpis[r.metric] = Number(r.value));
   byBot.forEach((b) => { b.commission_amt = Number(b.commission_amt); b.distinct_opps = Number(b.distinct_opps); });
   byMonth.forEach((m) => { m.commission_amt = Number(m.commission_amt); m.distinct_opps = Number(m.distinct_opps); });
   (replies || []).forEach((r) => { r.reply_count = Number(r.reply_count); });
-  return { kpis, byBot, byMonth, replies: replies || [], outcomes: outcomes || [], roi: (roi && roi[0]) || null, byBotMonth: byBotMonth || [], asOf: (k[0] && k[0].as_of) || "" };
+  return { kpis, byBot, byMonth, replies: replies || [], outcomes: outcomes || [], roi: (roi && roi[0]) || null, insights: insights || [], byBotMonth: byBotMonth || [], asOf: (k[0] && k[0].as_of) || "" };
 }
 
 function countUp(node, target, fmt, ms = 1500) {
@@ -570,6 +585,62 @@ function renderFunnel(d) {
   }
 }
 
+const INS_ICON = { warning: "⚠️", opportunity: "💡", win: "🏆" };
+const insRow = (i) => el(`<div class="ins ${i.severity}"><div class="it">${INS_ICON[i.severity] || "💡"} ${esc(i.title)}</div><div class="ib">${esc(i.body)}</div></div>`);
+
+function computeSignals(d) {
+  const s = [];
+  const bots = d.byBot || [], months = d.byMonth || [], oc = d.outcomes || [];
+  const total = (d.kpis && d.kpis.total_commission_influenced) || 0;
+  if (bots.length && total > 0) {
+    const top = bots[0], share = 100 * top.commission_amt / total;
+    if (share > 30) s.push({ severity: "opportunity", title: `${Math.round(share)}% of revenue rides on ${top.bot_name || top.assisted_by_value}`,
+      body: `Concentration cuts both ways — ${top.bot_name || "the top bot"}'s playbook (cadence, copy, handoff) is proven. Clone it to the mid-tier bots to de-risk and grow.` });
+  }
+  const pos = oc.reduce((a, o) => a + (Number(o.positive_replies) || 0), 0);
+  const fund = oc.reduce((a, o) => a + (Number(o.positive_funded) || 0), 0);
+  if (pos - fund > 20) s.push({ severity: "opportunity", title: `${(pos - fund).toLocaleString()} positive repliers haven't funded yet`,
+    body: `In the tracked reply window, ${pos} people replied positively but only ${fund} funded. That delta is the warmest call list in the building — a follow-up pass costs nothing.` });
+  const curYM = nowYM();
+  const full = months.filter((m) => m.payout_month !== curYM);
+  if (full.length >= 2) {
+    const a = full[full.length - 2], b = full[full.length - 1];
+    const chg = a.commission_amt > 0 ? 100 * (b.commission_amt - a.commission_amt) / a.commission_amt : 0;
+    if (chg <= -15) s.push({ severity: "warning", title: `${monLbl(b.payout_month)} down ${Math.abs(Math.round(chg))}% vs ${monLbl(a.payout_month)}`,
+      body: `Commission influenced fell from ${fmtK(a.commission_amt)} to ${fmtK(b.commission_amt)}. Check lead volume into the bots and handoff throughput before it compounds.` });
+    else if (chg >= 15) s.push({ severity: "win", title: `${monLbl(b.payout_month)} up ${Math.round(chg)}% vs ${monLbl(a.payout_month)}`,
+      body: `Momentum: ${fmtK(a.commission_amt)} → ${fmtK(b.commission_amt)} month over month. Whatever changed — volume, copy, routing — identify and protect it.` });
+  }
+  const stuck = oc.filter((o) => (Number(o.positive_replies) || 0) >= 10 && !(Number(o.funded_commission) > 0)).map((o) => o.bot_name);
+  if (stuck.length) s.push({ severity: "warning", title: `Engaged but not converting: ${stuck.slice(0, 3).join(", ")}`,
+    body: `These bots earn 10+ positive replies in the tracked window but $0 funded ties back to them. The bots are doing their job — audit what happens after the handoff.` });
+  const rep = d.replies || [];
+  const repTotal = rep.reduce((a, r) => a + (Number(r.reply_count) || 0), 0);
+  const opt = rep.filter((r) => r.sentiment === "Opt-out").reduce((a, r) => a + (Number(r.reply_count) || 0), 0);
+  if (repTotal > 50 && opt / repTotal > 0.05) s.push({ severity: "warning", title: `Opt-out rate at ${Math.round(100 * opt / repTotal)}%`,
+    body: `${opt} of ${repTotal} recent replies asked to stop. Above ~5% risks deliverability and reputation — review send frequency and list quality.` });
+  return s.slice(0, 5);
+}
+
+function renderInsights(d) {
+  const card = document.getElementById("insightsCard");
+  if (!card) return;
+  const ai = d.insights || [];
+  const sig = computeSignals(d);
+  if (!ai.length && !sig.length) { card.style.display = "none"; return; }
+  card.style.display = "";
+  const aiHost = document.getElementById("insightsAI");
+  const sigHost = document.getElementById("insightsSignals");
+  aiHost.replaceChildren(...(ai.length ? [
+    el(`<div class="insgrp">🤖 AI analyst brief · ${ai[0].generated_at ? new Date(ai[0].generated_at).toLocaleDateString() : ""}</div>`),
+    ...ai.map(insRow)
+  ] : []));
+  sigHost.replaceChildren(...(sig.length ? [
+    el(`<div class="insgrp">📈 Live signals · computed from current data</div>`),
+    ...sig.map(insRow)
+  ] : []));
+}
+
 function renderROI(d) {
   const card = document.getElementById("roiCard");
   const roi = d.roi, k = d.kpis;
@@ -678,6 +749,7 @@ function render(d) {
   const curYM = nowYM();
   renderExecBand(d);
   renderFunnel(d);
+  renderInsights(d);
   renderROI(d);
 
   window._data = d;

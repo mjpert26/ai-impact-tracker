@@ -1,0 +1,190 @@
+{
+  "name": "AI Impact \u2014 Weekly AI Analyst (Claude)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "10 8 * * 1"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "an000000-0000-4000-8000-000000000001",
+      "name": "Mondays 08:10 UTC"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rrdgghwxuincfengkjyd.supabase.co/rest/v1/rpc/get_analyst_snapshot",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        210,
+        0
+      ],
+      "id": "an000000-0000-4000-8000-000000000002",
+      "name": "Fetch mart snapshot",
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "uB48zHhGKViNKUEe",
+          "name": "Supabase ai_impact (service_role)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const snap = $input.first().json;\nconst sys = \"You are a sharp, direct revenue-operations analyst reviewing Big Think Capital's in-house AI sales bot program. Context you must respect: 'commission influenced' uses last-writer attribution on a Salesforce multipicklist (influence, not sole credit). In 'outcomes', funded/funded_commission only reflect an email-join inside the tracked reply window and UNDERCOUNT true funded totals - never claim a bot has zero revenue from those fields alone; cross-check against by_bot. Gianna Scavina's low volume is a known email-deliverability issue being fixed. The current calendar month in by_month is partial. Your job: 4-7 concrete recommendations an executive can act on this week. Ground every claim in the numbers provided. No filler, no 'gather more data', no hedging. Respond with ONLY a strict JSON array, each element {\\\"severity\\\": \\\"warning\\\"|\\\"opportunity\\\"|\\\"win\\\", \\\"title\\\": string <=60 chars, \\\"body\\\": string <=280 chars}.\";\nconst usr = \"This week's data snapshot:\\n\" + JSON.stringify(snap);\nreturn [{ json: { sys, usr } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        0
+      ],
+      "id": "an000000-0000-4000-8000-000000000003",
+      "name": "Build prompt"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1400, system: $json.sys, messages: [{ role: 'user', content: $json.usr }] }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        630,
+        0
+      ],
+      "id": "an000000-0000-4000-8000-000000000004",
+      "name": "Claude analyzes",
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "tkrE610QOjpv1yIn",
+          "name": "Anthropic (AI Impact)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "let txt = '';\ntry { txt = $input.first().json.content[0].text; } catch (e) { txt = ''; }\ntxt = String(txt).trim().replace(/^```(json)?/i, '').replace(/```$/, '').trim();\nlet items = [];\ntry { items = JSON.parse(txt); } catch (e) { items = []; }\nif (!Array.isArray(items)) items = [];\nconst ok = ['warning', 'opportunity', 'win'];\nitems = items\n  .filter((i) => i && i.title && i.body)\n  .map((i) => ({ severity: ok.includes(i.severity) ? i.severity : 'opportunity',\n                 title: String(i.title).slice(0, 80), body: String(i.body).slice(0, 400) }))\n  .slice(0, 8);\nif (!items.length) return []; // keep the previous brief if the model output was unusable\nreturn [{ json: { p_rows: items } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        0
+      ],
+      "id": "an000000-0000-4000-8000-000000000005",
+      "name": "Parse recommendations"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rrdgghwxuincfengkjyd.supabase.co/rest/v1/rpc/set_ai_insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_rows: $json.p_rows }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1050,
+        0
+      ],
+      "id": "an000000-0000-4000-8000-000000000006",
+      "name": "Save brief",
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "uB48zHhGKViNKUEe",
+          "name": "Supabase ai_impact (service_role)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Mondays 08:10 UTC": {
+      "main": [
+        [
+          {
+            "node": "Fetch mart snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch mart snapshot": {
+      "main": [
+        [
+          {
+            "node": "Build prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build prompt": {
+      "main": [
+        [
+          {
+            "node": "Claude analyzes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude analyzes": {
+      "main": [
+        [
+          {
+            "node": "Parse recommendations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse recommendations": {
+      "main": [
+        [
+          {
+            "node": "Save brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
