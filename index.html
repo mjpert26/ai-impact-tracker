@@ -385,9 +385,19 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const AUTH_TOKEN = (() => {
   try {
     const m = location.hash.match(/sbt=([^&]+)/);
+    const c = location.hash.match(/sfc=([^&]+)/);
+    if (c) sessionStorage.setItem("sfc", c[1]);
     if (m) { sessionStorage.setItem("sbt", m[1]); history.replaceState(null, "", location.pathname + location.search); }
     return sessionStorage.getItem("sbt") || "";
   } catch (e) { return ""; }
+})();
+// Salesforce Canvas client context (for the official SDK resize)
+const SF_CLIENT = (() => {
+  try {
+    const raw = sessionStorage.getItem("sfc");
+    if (!raw) return null;
+    return JSON.parse(atob(raw.replace(/-/g, "+").replace(/_/g, "/")));
+  } catch (e) { return null; }
 })();
 // Baked snapshot (validated 2026-06-29) — fallback if the live read is unavailable.
 const SNAPSHOT = {
@@ -784,15 +794,27 @@ document.getElementById("printbtn").addEventListener("click", () => window.print
 (function () {
   if (window.parent === window) return;
   let last = 0;
+  let sdkReady = false;
+
+  // Load Salesforce's official Canvas SDK so resizing goes through their own
+  // framework (handles the VF wrappers/iframe geometry we can't reach).
+  if (SF_CLIENT && SF_CLIENT.instanceUrl) {
+    const s = document.createElement("script");
+    s.src = SF_CLIENT.instanceUrl.replace(/\/$/, "") + "/canvas/sdk/js/canvas-all.js";
+    s.onload = () => { sdkReady = true; last = 0; send(); };
+    document.head.appendChild(s);
+  }
+
   const send = () => {
     try {
-      // Measure the content column, not the body: body has min-height:100vh, which
-      // tracks the iframe height and would feed back into an endless growth loop.
       const wrap = document.querySelector(".wrap");
       const h = (wrap ? wrap.offsetHeight + wrap.offsetTop + 40 : document.documentElement.scrollHeight);
       if (Math.abs(h - last) <= 4) return;
       last = h;
-      // Salesforce may nest the canvas behind intermediate frames — notify every ancestor.
+      if (sdkReady && window.Sfdc && Sfdc.canvas && Sfdc.canvas.client && SF_CLIENT) {
+        try { Sfdc.canvas.client.resize(SF_CLIENT, { height: h + "px" }); } catch (e) {}
+      }
+      // Fallback channel for non-SDK hosts
       let w = window.parent, hops = 0;
       while (w && hops < 6) {
         try { w.postMessage({ aiImpactHeight: h }, "*"); } catch (e) {}

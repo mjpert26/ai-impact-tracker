@@ -73,9 +73,20 @@ module.exports = async (req, res) => {
     const unsigned = b64u({ alg: 'HS256', typ: 'JWT' }) + '.' + b64u(claims);
     const jwt = unsigned + '.' + crypto.createHmac('sha256', jwtSecret).update(unsigned).digest('base64url');
 
+    // Pass the Canvas client context through so the dashboard can call the
+    // official Canvas SDK resize (Salesforce-sanctioned iframe sizing).
+    let sfc = '';
+    try {
+      const c = envelope.client || {};
+      sfc = Buffer.from(JSON.stringify({
+        oauthToken: c.oauthToken, instanceId: c.instanceId,
+        instanceUrl: c.instanceUrl, targetOrigin: c.targetOrigin
+      })).toString('base64url');
+    } catch (e) { sfc = ''; }
+
     res.statusCode = 302;
     res.setHeader('Cache-Control', 'no-store');
-    res.setHeader('Location', '/#sbt=' + jwt);
+    res.setHeader('Location', '/#sbt=' + jwt + (sfc ? '&sfc=' + sfc : ''));
     res.end();
   } catch (e) {
     res.status(500).send('canvas auth error');
