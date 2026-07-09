@@ -786,7 +786,10 @@ document.getElementById("printbtn").addEventListener("click", () => window.print
   let last = 0;
   const send = () => {
     try {
-      const h = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+      // Measure the content column, not the body: body has min-height:100vh, which
+      // tracks the iframe height and would feed back into an endless growth loop.
+      const wrap = document.querySelector(".wrap");
+      const h = (wrap ? wrap.offsetHeight + wrap.offsetTop + 40 : document.documentElement.scrollHeight);
       if (Math.abs(h - last) <= 4) return;
       last = h;
       // Salesforce may nest the canvas behind intermediate frames — notify every ancestor.
