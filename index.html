@@ -787,12 +787,20 @@ document.getElementById("printbtn").addEventListener("click", () => window.print
   const send = () => {
     try {
       const h = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
-      if (Math.abs(h - last) > 4) { last = h; window.parent.postMessage({ aiImpactHeight: h }, "*"); }
+      if (Math.abs(h - last) <= 4) return;
+      last = h;
+      // Salesforce may nest the canvas behind intermediate frames — notify every ancestor.
+      let w = window.parent, hops = 0;
+      while (w && hops < 6) {
+        try { w.postMessage({ aiImpactHeight: h }, "*"); } catch (e) {}
+        if (w === window.top) break;
+        w = w.parent; hops++;
+      }
     } catch (e) {}
   };
   try { new ResizeObserver(send).observe(document.body); } catch (e) {}
   window.addEventListener("load", send);
-  setInterval(send, 1000);
+  setInterval(() => { last = 0; send(); }, 1500);
 })();
 
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
