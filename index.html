@@ -353,7 +353,7 @@
     <div class="hero">
       <div class="eyebrow">Records the bots talked to</div>
       <div id="rechero" class="big" style="font-size:clamp(30px,5.5vw,52px)">—</div>
-      <div class="cap">Each record is a contact a bot replied to, matched to Salesforce. Click any row to read their reply.</div>
+      <div class="cap">Each record is one <b>conversation</b> a bot had, matched to Salesforce by email — this tab is for <b>reading replies</b>. It is not the funded-deal count: only a subset of funded deals have a matching conversation here. For commission and funded totals, use the <b>Commission</b> and <b>Scorecard</b> tabs. Click any row to read the reply.</div>
     </div>
     <section class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
@@ -362,7 +362,7 @@
           <input id="recSearch" type="search" placeholder="Search name or email…">
           <select id="recMonth"></select>
           <select id="recBot"></select>
-          <label class="fundedtoggle"><input type="checkbox" id="recFunded"> 💰 funded only</label>
+          <label class="fundedtoggle"><input type="checkbox" id="recFunded"> 💰 funded-deal match</label>
         </div>
       </div>
       <div id="records"></div>
@@ -893,7 +893,9 @@ async function drawRecords() {
   if (s) bits.push("“" + esc(s) + "”");
   info.innerHTML = "Showing <b>" + shown + "</b>" + (capped ? " of <b>" + total.toLocaleString() + "</b>" : "") +
     " for <b>" + bits.join(" · ") + "</b>" + (capped ? " — narrow with a bot or search" : "") +
-    ". Click a row to read the reply. <b>Customer PII</b> — gate before sharing externally.";
+    ". Click a row to read the reply." +
+    (f ? " <b>Note:</b> these are conversations whose email matched a funded deal — a subset for reading, <b>not</b> the funded-deal count. See the Commission tab for totals." : "") +
+    " <b>Customer PII</b> — gate before sharing externally.";
   host.replaceChildren(...view.slice(0, 800).map(recRow));
 }
 
